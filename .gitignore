@@ -1,0 +1,16 @@
+syntax: glob
+
+*.pyc
+*.py.*
+*.apk
+.freecell4maemo/*
+.git/*
+.buildozer/*
+android/bin/*
+android/tmp/*
+android/*.apk
+*.sublime*
+mk
+ENV*/*
+ARM*/*
+bin/*

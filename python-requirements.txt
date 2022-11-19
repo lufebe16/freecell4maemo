@@ -1,0 +1,9 @@
+buildozer
+Cython
+Kivy
+permutation
+pip
+python-for-android
+setuptools
+six
+wheel
