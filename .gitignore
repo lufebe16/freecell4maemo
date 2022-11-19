@@ -14,3 +14,4 @@ mk
 ENV*/*
 ARM*/*
 bin/*
+__pycache__/
