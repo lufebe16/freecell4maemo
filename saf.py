@@ -39,6 +39,9 @@ class SaF(object):
 		self.REQUEST_CODE = 7  # ??
 		self.DocumentsContract = jnius.autoclass('android.provider.DocumentsContract')
 
+		# dafür brauchts androidx.preference dependency angabe!
+		self.DocumentFile = jnius.autoclass('androidx.documentfile.provider.DocumentFile')
+
 	def set_intent(self):
 		if jnius is None:
 			return

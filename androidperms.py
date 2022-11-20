@@ -13,7 +13,8 @@ except ImportError:
 # LB190927.
 # wait loop removed. (Implement it in external code if needed.)
 # LB191011.
-
+# Neu wird compat aus androidx entnommen
+# LB221120.
 
 class AndroidPerms(object):
     def __init__(self):
@@ -21,12 +22,9 @@ class AndroidPerms(object):
             return
         self.PythonActivity = jnius.autoclass(
             'org.kivy.android.PythonActivity')
-        self.Compat = jnius.autoclass(
-            'android.support.v4.content.ContextCompat')
 
-        #self.Compat = jnius.autoclass(
-        #    'androidx.core.content.ContextCompat')
-        # androidx wird offensichtlich nicht unterstützt.
+        self.Compat = jnius.autoclass(
+            'androidx.core.content.ContextCompat')
 
         self.currentActivity = jnius.cast(
             'android.app.Activity', self.PythonActivity.mActivity)

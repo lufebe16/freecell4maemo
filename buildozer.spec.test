@@ -29,7 +29,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
 #source.exclude_patterns = license,images/*/*.jpg
-source.exclude_patterns = mk, mk8, README_BUILDOZER
+source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys
 
 # (str) Application versioning (method 1)
 version = 1.2
@@ -185,6 +185,7 @@ android.skip_update = True
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
 #android.add_src =
+android.add_src = java
 
 # (list) Android AAR archives to add
 #android.add_aars =
@@ -198,6 +199,9 @@ android.skip_update = True
 
 # (list) Gradle dependencies to add
 #android.gradle_dependencies =
+android.gradle_dependencies =
+  androidx.appcompat:appcompat:1.4.2
+  ,androidx.preference:preference:1.2.0
 
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
