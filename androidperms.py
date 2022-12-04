@@ -63,3 +63,5 @@ def requestStoragePerm():
     ap = AndroidPerms()
     if not ap.getPerms(["android.permission.WRITE_EXTERNAL_STORAGE"]):
         ap.requestPerms(["android.permission.WRITE_EXTERNAL_STORAGE"])
+        return False
+    return True

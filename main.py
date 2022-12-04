@@ -66,6 +66,7 @@ from kivy.uix.label import Label
 from cardimg import *
 from taskm import *
 from androidperms import requestStoragePerm
+from androidperms import getStoragePerm
 from kivy.clock import Clock
 from kivy.base import stopTouchApp
 from kivy.animation import Animation
@@ -961,6 +962,25 @@ class FreeCell(object):
         else:
             return False  # delegate
 
+    def getStorage(self):
+        fstorage = ".freecell4maemo"
+        if requestStoragePerm():
+            logging.info('FreeCell: storage perm granted')
+
+            from android.storage import primary_external_storage_path
+            primary_ext_storage = primary_external_storage_path()
+            fstorage = primary_ext_storage+"/"+fstorage
+            if not os.path.exists(fstorage):
+                os.makedirs(fstorage)
+        else:
+            logging.info('FreeCell: storage perm denied')
+
+            if not os.path.exists(fstorage):
+                os.makedirs(fstorage)
+
+        logging.info(fstorage)
+        return fstorage
+
     def __init__(self):
         # Init the rendering objects to None for now; they will be properly populated during the expose_event handling
         self.greenColour = None
@@ -986,9 +1006,8 @@ class FreeCell(object):
             # tun. Direkter zugriff auf die pfade ist nicht möglich, sondern
             # man muss das android api benutzen.
             # ausserdem besteht ein synchronisation problem beim programm
-            # start.
-
-            requestStoragePerm()
+            # start (aber das ist das gleiche wie auch bei requestStoragePerm
+            # unten)
 
             #from plyer import storagepath
             #sdcard = str(storagepath.get_external_storage_dir())
@@ -1002,19 +1021,8 @@ class FreeCell(object):
             #path = path_file.getAbsolutePath()
             #logging.info(path)
 
-            from android.storage import primary_external_storage_path
-            primary_ext_storage = primary_external_storage_path()
-            logging.info(primary_ext_storage)
-
-            fstorage = primary_ext_storage+"/.freecell4maemo"
-            if not os.path.exists(fstorage):
-                os.makedirs(fstorage)
+            fstorage = self.getStorage()
             self.store = LStore(fstorage+'/current.json')
-
-            # alt:
-            #self.store = LStore('/sdcard/.freecell4maemo/current.json')
-            #if not os.path.exists('/sdcard/.freecell4maemo'):
-            #    os.makedirs('/sdcard/.freecell4maemo')
         else:
             self.store = LStore('.freecell4maemo/current.json')
 
