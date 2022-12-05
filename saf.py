@@ -26,6 +26,9 @@ Intent i = new Intent("ACTIVITY.THAT.YOU.WANT.TO.LAUNCH");
 instrumentation.startActivitySync(i);
 '''
 
+Uri = jnius.autoclass('android.net.Uri')
+DocumentFile = jnius.autoclass('androidx.documentfile.provider.DocumentFile')
+
 class SaF(object):
 	def __init__(self):
 		if jnius is None:
@@ -40,7 +43,6 @@ class SaF(object):
 		self.DocumentsContract = jnius.autoclass('android.provider.DocumentsContract')
 
 		# dafür brauchts androidx.preference dependency angabe!
-		self.DocumentFile = jnius.autoclass('androidx.documentfile.provider.DocumentFile')
 
 	def set_intent(self):
 		if jnius is None:
@@ -64,6 +66,8 @@ class SaF(object):
 		#while self.done == False:
 		#	time.sleep(1)
 
+		self.jString = jnius.autoclass('java.lang.String')
+
 
 	@mainthread
 	def rec_intent(self, requestCode, resultCode, intent):  # callback
@@ -72,6 +76,7 @@ class SaF(object):
 		#if not resultCode == OK # oder sowas
 		#	return
 		if requestCode == self.REQUEST_CODE:
+
 			logging.info("SaF: rec_intent")
 			msg = ""
 			tree_uri = intent.getData()
@@ -80,6 +85,43 @@ class SaF(object):
 			#  O.K. der selektierte pfad kommt hier in spezieller Form an.
 			print("getEncodedPath;",tree_uri.getEncodedPath())
 			print("toString:",tree_uri.toString())
+			myUri = tree_uri.toString()
+            # content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo
+
+			# ok. nun gehen wir so vor wie im muster (GPSApplication)
+			uri = Uri.parse(myUri)
+			print("uri:",uri)
+
+			pickedDir = DocumentFile.fromTreeUri(self.currentActivity, uri)
+			print("pickedDir:",pickedDir)
+
+			dbFile = pickedDir.createFile("", "database_copy.db");
+			print("dbfile:",dbFile)
+			print("zugeh. uri:",dbFile.getUri().toString())
+
+			# Damit liess sich ein leeres file database_copy.db im 
+			# ausgewählten Verzeichnis erzeugen!.
+
+			# der java output stream muss dann über den contentresolver bezogen
+			# werden. (Da drin ist also die security zuhause.). Einen os Filehandle
+			# bekommen wir nicht ?
+
+			# java:
+			# output = GPSApplication.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
+
+			#ostream = self.PythonActivity.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
+			ostream = self.currentActivity.getContentResolver().openOutputStream(dbFile.getUri(), "rw")
+			#ostream = self.currentActivity.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
+			print("stream:",ostream)
+			# das ist ein normales java.io.OutputStream objekt - also android unabh.
+			# da lässt sich vielleicht etwas tun!
+
+			s = "hello file"
+			ostream.write(s.encode())
+			# so get das !!
+
+			ostream.flush()
+			ostream.close()
 
 			'''
 			Also das funktioniert soweit.

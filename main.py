@@ -992,13 +992,13 @@ class FreeCell(object):
         self.animIsComplete = False
         self.startCardOrder = None
 
-        #self.saf = SaF()
+        self.saf = SaF()
 
         if platform=='android':
 
             # tests mit saf:
-            #self.saf.act_intent()
-            #self.saf.set_intent()
+            self.saf.act_intent()
+            self.saf.set_intent()
             # soweit ginge das: der picker dialog erscheint. Und die
             # Callback routine wird aufgerufen und liefert auch etwas
             # vernünftiges.
