@@ -14,67 +14,93 @@ except ImportError:
 import time
 from kivy.clock import mainthread
 
-'''
-# tip für synchron ?
+if jnius is not None:
+	Intent = jnius.autoclass('android.content.Intent')
+	Uri = jnius.autoclass('android.net.Uri')
 
-IntentFilter intF = new IntentFilter("ACTIVITY.THAT.YOU.WANT.TO.LAUNCH");
+	PythonActivity = jnius.autoclass('org.kivy.android.PythonActivity')
+	CurrentActivity = jnius.cast('android.app.Activity', PythonActivity.mActivity)
 
-Instrumentation instrumentation = new Instrumentation();
+	# dafür brauchts androidx.preference dependency angabe:
+	DocumentsContract = jnius.autoclass('android.provider.DocumentsContract')
+	DocumentFile = jnius.autoclass('androidx.documentfile.provider.DocumentFile')
 
-Instrumentation.ActivityMonitor monitor = instrumentation.addMonitor(intF, null, true);
-Intent i = new Intent("ACTIVITY.THAT.YOU.WANT.TO.LAUNCH");
-instrumentation.startActivitySync(i);
-'''
+	Build = jnius.autoclass("android.os.Build")
+	Version = jnius.autoclass("android.os.Build$VERSION")
+	VCodes = jnius.autoclass("android.os.Build$VERSION_CODES")
 
-Uri = jnius.autoclass('android.net.Uri')
-DocumentFile = jnius.autoclass('androidx.documentfile.provider.DocumentFile')
+from lstore import LStore
 
 class SaF(object):
 	def __init__(self):
 		if jnius is None:
 			return
 		logging.info("SaF: __init__")
-		self.PythonActivity = jnius.autoclass(
-			'org.kivy.android.PythonActivity')
-		self.currentActivity = jnius.cast(
-			'android.app.Activity', self.PythonActivity.mActivity)
-		self.Intent = jnius.autoclass('android.content.Intent')
-		self.REQUEST_CODE = 7  # ??
-		self.DocumentsContract = jnius.autoclass('android.provider.DocumentsContract')
 
-		# dafür brauchts androidx.preference dependency angabe!
+		self.REQUEST_CODE = 7  # ??
+		b = Build()
+		v = Version()
+		print("os version running:",v.SDK_INT)
+		vc = VCodes()
+		print("vcode N:",vc.N)
+		#print("vcode O:",vc.O)
+		#print("vcode Q:",vc.Q) # gibts nicht, da wir selbst auf O sind ?
+		# sind denn diese klassen vom aktuellen system, nicht von der app ?
+		# offensichtlich: denn SDK_INT is auch ein Konstante. liefert auf dem
+		# X: 26 !
+		# (andere klassen sind aber ganz bestimmt von der App!)
+
+		self.store = LStore('.freecell4maemo/path.json')
+		self.store.load()
+		self.lasturi = self.store.getEntry('myUri')
+		print ("uri from LStore:",self.lasturi)
 
 	def set_intent(self):
 		if jnius is None:
 			return
 		logging.info("SaF: set_intent")
 		
-		myintent = self.Intent(self.Intent.ACTION_OPEN_DOCUMENT_TREE)
+		myintent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
 
 		# aus GPSLogger:
 		#myintent.putExtra("android.content.extra.SHOW_ADVANCED", true);
 		#myintent.putExtra("android.content.extra.FANCY", true);
 
-		myintent.addFlags(self.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-		myintent.addFlags(self.Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-		myintent.addFlags(self.Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+		myintent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+		myintent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+		myintent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
 
-		self.currentActivity.startActivityForResult(myintent, self.REQUEST_CODE)
 
-		# das geht. (blockiert aber den UI Thread. startet vorerst schwarz).
-		#self.done = False
-		#while self.done == False:
-		#	time.sleep(1)
+		# /tree/primary:.freecell4maemo
+		# /tree/primary%3A.freecell4maemo
 
-		self.jString = jnius.autoclass('java.lang.String')
+		# directory vorgeben?:
+		# pickerUri = Uri.parse("/sdcard/.freecell4maemo")
+		#pickerUri = Uri.parse("/tree/primary:.freecell4maemo")
+		# pickerUri = Uri.parse(str("/tree/primary%3A.freecell4maemo")
+
+		myUri = "content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo"
+		pickerUri = Uri.parse(myUri)
+		pickedDir = DocumentFile.fromTreeUri(CurrentActivity, pickerUri)
+		print("pickedDir:",pickedDir)
+		print("canRead:",pickedDir.canRead())
+		print("canWrite:",pickedDir.canWrite())
+
+		myintent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, myUri);
+		# das bewirkt nichts.
+
+		# getContentResolver().takePersistableUriPermission(uri, takeFlags);
+
+		CurrentActivity.startActivityForResult(myintent, self.REQUEST_CODE)
+
+		# self.jString = jnius.autoclass('java.lang.String')
 
 
 	@mainthread
 	def rec_intent(self, requestCode, resultCode, intent):  # callback
 		if jnius is None:
 			return
-		#if not resultCode == OK # oder sowas
-		#	return
+
 		if requestCode == self.REQUEST_CODE:
 
 			logging.info("SaF: rec_intent")
@@ -84,20 +110,37 @@ class SaF(object):
 			# /tree/63EB-7808:freecell
 			#  O.K. der selektierte pfad kommt hier in spezieller Form an.
 			print("getEncodedPath;",tree_uri.getEncodedPath())
-			print("toString:",tree_uri.toString())
+
 			myUri = tree_uri.toString()
+			print("toString:",myUri,type(myUri))
             # content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo
+            # Das sollte irgendwie gespeichert werden, damit wir beim start
+            # überprüfen können, ob gesetzt.
+
+			self.store.setEntry('myUri',myUri)
+			self.store.store()
+
+            # Anwenden:
 
 			# ok. nun gehen wir so vor wie im muster (GPSApplication)
 			uri = Uri.parse(myUri)
 			print("uri:",uri)
 
-			pickedDir = DocumentFile.fromTreeUri(self.currentActivity, uri)
+			pickedDir = DocumentFile.fromTreeUri(CurrentActivity, uri)
 			print("pickedDir:",pickedDir)
 
-			dbFile = pickedDir.createFile("", "database_copy.db");
+			# Anmerkung: Um ein file zu finden zu bekannter uri:
+			#  fromSingleUri(context,uri)
+
+			dbFile = pickedDir.findFile("database_copy.db");
+			if dbFile is None:
+				dbFile = pickedDir.createFile("", "database_copy.db");
+
 			print("dbfile:",dbFile)
 			print("zugeh. uri:",dbFile.getUri().toString())
+
+			print("canRead:",dbFile.canRead())
+			print("canWrite:",dbFile.canWrite())
 
 			# Damit liess sich ein leeres file database_copy.db im 
 			# ausgewählten Verzeichnis erzeugen!.
@@ -109,14 +152,13 @@ class SaF(object):
 			# java:
 			# output = GPSApplication.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
 
-			#ostream = self.PythonActivity.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
-			ostream = self.currentActivity.getContentResolver().openOutputStream(dbFile.getUri(), "rw")
-			#ostream = self.currentActivity.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
+			ostream = CurrentActivity.getContentResolver().openOutputStream(dbFile.getUri(), "rw")
 			print("stream:",ostream)
+
 			# das ist ein normales java.io.OutputStream objekt - also android unabh.
 			# da lässt sich vielleicht etwas tun!
 
-			s = "hello file"
+			s = "hello file extended"
 			ostream.write(s.encode())
 			# so get das !!
 

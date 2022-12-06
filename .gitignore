@@ -15,3 +15,7 @@ ENV*/*
 ARM*/*
 bin/*
 __pycache__/
+test.*
+spick*.*
+temp/*
+test/*

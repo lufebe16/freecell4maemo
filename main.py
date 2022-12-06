@@ -255,10 +255,12 @@ def to_str(bytes_or_str):
 
 #=============================================================================
 
+from lstore import LBase
+'''
 class LBase(object):
     def __init__(self, **kw):
         super(LBase, self).__init__()
-
+'''
 #=============================================================================
 # (projekt, tests).
 
@@ -382,6 +384,8 @@ class LStoreDb(LBase):
 
 #=============================================================================
 
+from lstore import LStore
+'''
 class LStore(LBase):
     def __init__(self, path, **kw):
         super(LStore, self).__init__(**kw)
@@ -432,7 +436,7 @@ class LStore(LBase):
             pass
 
         return ret
-
+'''
 #=============================================================================
 
 
