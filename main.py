@@ -85,6 +85,8 @@ import json
 import os
 import sys
 
+from base import LBase
+
 # Size of the inset border for the window
 FULLSCREEN_BORDER_WIDTH = 10
 SMALLSCREEN_BORDER_WIDTH = 2
@@ -255,7 +257,7 @@ def to_str(bytes_or_str):
 
 #=============================================================================
 
-from lstore import LBase
+from lstore import LBase, LOsIO, LStore
 '''
 class LBase(object):
     def __init__(self, **kw):
@@ -383,62 +385,6 @@ class LStoreDb(LBase):
 
 
 #=============================================================================
-
-from lstore import LStore
-'''
-class LStore(LBase):
-    def __init__(self, path, **kw):
-        super(LStore, self).__init__(**kw)
-        self.path = path
-        self.state = {}
-
-    def setEntry(self, subject, value):
-        self.state[subject] = value
-
-    def getEntry(self, subject):
-        if subject in self.state:
-            return self.state[subject]
-        else:
-            return None
-
-    def store(self):
-        try:
-            fj = open(self.path, mode = 'w')
-        except IOError:
-            return
-
-        try:
-            json.dump(self.state, fj)
-        except Exception:
-            pass
-
-        try:
-            fj.close()
-        except Exception:
-            pass
-
-    def load(self):
-        ret = True
-        try:
-            fj = open(self.path)
-        except IOError:
-            ret = False
-            return ret
-
-        try:
-            self.state = json.load(fj)
-        except Exception:
-            ret = False
-
-        try:
-            fj.close()
-        except Exception:
-            pass
-
-        return ret
-'''
-#=============================================================================
-
 
 class menubar(ActionBar):
     def __init__(self, **kw):
@@ -985,6 +931,47 @@ class FreeCell(object):
         logging.info(fstorage)
         return fstorage
 
+    def getStreamIO(self, rootdir = None):
+        if platform=='android':
+            from jnius import autoclass
+            Version = autoclass("android.os.Build$VERSION")
+            v = Version()
+            print("os version running:",v.SDK_INT)
+
+            # wenn android api < 26 über getstorage oben, sonst über saf.
+
+            if v.SDK_INT < 26:
+                if requestStoragePerm():
+                    logging.info('FreeCell: storage perm granted')
+
+                    from android.storage import primary_external_storage_path
+                    fstorage = primary_external_storage_path()
+                    if rootdir is not None:
+                        fstorage = fstorage+"/"+rootdir
+                    if not os.path.exists(fstorage):
+                        os.makedirs(fstorage)
+                    return LOsIO(fstorage)
+                else:
+                    logging.info('FreeCell: storage perm denied')
+                    if rootdir is not None and not os.path.exists(rootdir):
+                        os.makedirs(rootdir)
+                    return LOsIO(rootdir)
+            else:
+                saf = SaF(rootdir)
+                storage = saf.get_storage()
+                if storage is not None:
+                    logging.info('FreeCell: storage access (saf) granted')
+                    return saf
+                else:
+                    logging.info('FreeCell: storage perm (saf) not set')
+                    return LOsIO(rootdir)
+        else:
+            logging.info('FreeCell: os filesystem storage')
+            if rootdir is not None and not os.path.exists(rootdir):
+                os.makedirs(rootdir)
+            return LOsIO(rootdir)
+
+
     def __init__(self):
         # Init the rendering objects to None for now; they will be properly populated during the expose_event handling
         self.greenColour = None
@@ -996,13 +983,25 @@ class FreeCell(object):
         self.animIsComplete = False
         self.startCardOrder = None
 
+        '''
         self.saf = SaF()
+        # man müsste hier angeben können, welche directory SaF reservieren
+        # soll.
 
         if platform=='android':
 
             # tests mit saf:
-            self.saf.act_intent()
-            self.saf.set_intent()
+            storage = self.saf.get_storage()
+            if storage is not None:
+                # test:
+                writer = self.saf.writer("mytext.txt","rw")
+                s = "hallo dies war nun der writer"
+                writer.write(s.encode())
+
+                # wird so:
+                # self.store = LStore("current.json")
+                # self.store.setIO(self.saf)
+
             # soweit ginge das: der picker dialog erscheint. Und die
             # Callback routine wird aufgerufen und liefert auch etwas
             # vernünftiges.
@@ -1026,9 +1025,21 @@ class FreeCell(object):
             #logging.info(path)
 
             fstorage = self.getStorage()
-            self.store = LStore(fstorage+'/current.json')
+            iomgr = LOsIO(fstorage)
+            self.store = LStore('current.json')
+            self.store.setIO(iomgr)
+
+            #self.store = LStore(fstorage+'/current.json')
         else:
-            self.store = LStore('.freecell4maemo/current.json')
+            iomgr = LOsIO('.freecell4maemo')
+            self.store = LStore('current.json')
+            self.store.setIO(iomgr)
+
+            #self.store = LStore('.freecell4maemo/current.json')
+        '''
+
+        self.store = LStore('current.json')
+        self.store.setIO(self.getStreamIO(".freecell4maemo"))
 
         # Taskq fuer Animationssequenzen
         self.taskQ = TaskQ()
@@ -1911,6 +1922,13 @@ class FreeCellApp(App):
 
     def build(self):
         logging.info("FreeCellApp: build()")
+
+        try:
+            from android import loadingscreen
+            loadingscreen.hide_loading_screen()
+        except ImportError:
+            pass
+        
         self.freeCell = FreeCell()
         self.root = self.freeCell.mainWindow        
         return self.root

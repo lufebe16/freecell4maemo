@@ -3,63 +3,101 @@ import json
 import os
 import sys
 
+from base import LBase, LStreamIO
+
 #=============================================================================
 
-class LBase(object):
-    def __init__(self, **kw):
-        super(LBase, self).__init__()
+class LOsReader(LBase):
+	def __init__(self, path, flags = 'rb'):
+		self.path = path
+		self.file = None
+		try:
+			self.file = open(self.path, mode = flags)
+		except IOError:
+			pass
+
+	def __del__(self):
+		if self.file is not None:
+			self.file.close()
+
+	def read(self):
+		if self.file:
+			return self.file.read()
+
+#=============================================================================
+
+class LOsWriter(LBase):
+	def __init__(self, path, flags = 'wb'):
+		self.path = path
+		self.file = None
+		try:
+			self.file = open(self.path, mode = flags)
+		except IOError:
+			pass
+
+	def __del__(self):
+		if self.file is not None:
+			self.file.close()
+
+	def write(self,data):
+		if self.file:
+			self.file.write(data)
+
+#=============================================================================
+
+class LOsIO(LStreamIO):
+	def __init__(self, rootdir = None):
+		self.root = rootdir
+
+	def writer(self, filename, flags = 'wb'):
+		if self.root is not None:
+			return LOsWriter(self.root+"/"+filename, flags)
+		else:
+			return LOsWriter(filename, flags)
+
+	def reader(self, filename, flags = 'rb'):
+		if self.root is not None:
+			return LOsReader(self.root+"/"+filename, flags)
+		else:
+			return LOsReader(filename, flags)
 
 #=============================================================================
 
 class LStore(LBase):
-    def __init__(self, path, **kw):
-        super(LStore, self).__init__(**kw)
-        self.path = path
-        self.state = {}
+	def __init__(self, path, **kw):
+		super(LStore, self).__init__(**kw)
+		self.path = path
+		self.state = {}
+		self.io = LOsIO()
 
-    def setEntry(self, subject, value):
-        self.state[subject] = value
+	def setIO(self, io):
+		self.io = io
 
-    def getEntry(self, subject):
-        if subject in self.state:
-            return self.state[subject]
-        else:
-            return None
+	def setEntry(self, subject, value):
+		self.state[subject] = value
 
-    def store(self):
-        try:
-            fj = open(self.path, mode = 'w')
-        except IOError:
-            return
+	def getEntry(self, subject):
+		if subject in self.state:
+			return self.state[subject]
+		else:
+			return None
 
-        try:
-            json.dump(self.state, fj)
-        except Exception:
-            pass
+	def store(self):
 
-        try:
-            fj.close()
-        except Exception:
-            pass
+		writer = self.io.writer(self.path)
+		data = json.dumps(self.state).encode()
+		#print ("store data:",data,"type(data)",type(data))
+		writer.write(data)
 
-    def load(self):
-        ret = True
-        try:
-            fj = open(self.path)
-        except IOError:
-            ret = False
-            return ret
+	def load(self):
+		ret = True
 
-        try:
-            self.state = json.load(fj)
-        except Exception:
-            ret = False
+		reader = self.io.reader(self.path)
+		data = reader.read()
+		if data:
+			#print ("loaded data:",data,"type is:",type(data))
+			self.state = json.loads(data.decode())
 
-        try:
-            fj.close()
-        except Exception:
-            pass
-
-        return ret
+		return ret
 
 #=============================================================================

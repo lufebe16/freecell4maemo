@@ -30,70 +30,217 @@ if jnius is not None:
 	VCodes = jnius.autoclass("android.os.Build$VERSION_CODES")
 
 from lstore import LStore
+from base import LBase, LStreamIO
 
-class SaF(object):
-	def __init__(self):
+class SaFWriter(object):
+	def __init__(self, treeuri, filename, flags = 'w'):
+
+		logging.info("SaFWriter: __init__")
+
+		self.ostream = None
+		try:
+			uri = Uri.parse(treeuri)
+			myDir = DocumentFile.fromTreeUri(CurrentActivity, uri)
+			myFile = myDir.findFile(filename);
+			if myFile is None:
+				myFile = myDir.createFile("", filename);
+
+			logging.info("fileuri: %s" % myFile.getUri().toString())
+			logging.info("canRead: %s" % myFile.canRead())
+			logging.info("canWrite: %s" % myFile.canWrite())
+
+			self.ostream = CurrentActivity.getContentResolver().openOutputStream(myFile.getUri())
+		except:
+			print("error opening output stream")
+			self.ostream = None
+
+	def __del__(self):
+
+		logging.info("SaFWriter: __del__")
+
+		if self.ostream is not None:
+			self.ostream.flush()
+			self.ostream.close()
+
+	def write(self, data):
+		# data: bytearray
+
+		logging.info("SaFWriter: write")
+		try:
+			if self.ostream is not None:
+				self.ostream.write(data)
+		except:
+			print("error writing output stream")
+
+
+class SaFReader(object):
+	def __init__(self, treeuri, filename, flags = 'r'):
+
+		self.istream = None
+		try:
+			uri = Uri.parse(treeuri)
+			myDir = DocumentFile.fromTreeUri(CurrentActivity, uri)
+			myFile = myDir.findFile(filename);
+
+			logging.info("fileuri: %s" % myFile.getUri().toString())
+			logging.info("canRead: %s" % myFile.canRead())
+			logging.info("canWrite: %s" % myFile.canWrite())
+
+			self.istream = CurrentActivity.getContentResolver().openInputStream(myFile.getUri())
+		except:
+			print("error opening input stream")
+			self.istream = None
+
+	def __del__(self):
+
+		logging.info("SaFReader: __del__")
+
+		if self.istream is not None:
+			self.istream.close()
+
+	def read(self):
+		data = None
+		logging.info("SaFReader: read")
+
+		try:
+			if self.istream is not None:
+				data = bytearray()
+				b = bytearray(1024)
+				l = self.istream.read(b)
+				while l>0:
+					for i in range(0,l): data.append(b[i])
+					l = self.istream.read(b)
+		except:
+			print("error reading input stream")
+
+		#print("read finally:",data)
+		return data
+
+class SaF(LStreamIO):
+	def __init__(self, rootdir = "myDocuments"):
+		super(SaF, self).__init__()
+
 		if jnius is None:
 			return
+
 		logging.info("SaF: __init__")
 
+		self.rootdir = rootdir
 		self.REQUEST_CODE = 7  # ??
 		b = Build()
 		v = Version()
-		print("os version running:",v.SDK_INT)
-		vc = VCodes()
-		print("vcode N:",vc.N)
-		#print("vcode O:",vc.O)
-		#print("vcode Q:",vc.Q) # gibts nicht, da wir selbst auf O sind ?
+		logging.info('SaF: os version: %d' % v.SDK_INT)
+
+		# vc = VCodes()
+		# print("vcode N:",vc.N)
+		# print("vcode O:",vc.O)
+		# print("vcode Q:",vc.Q) # gibts nicht, da wir selbst auf O sind ?
 		# sind denn diese klassen vom aktuellen system, nicht von der app ?
 		# offensichtlich: denn SDK_INT is auch ein Konstante. liefert auf dem
 		# X: 26 !
 		# (andere klassen sind aber ganz bestimmt von der App!)
 
+		self.sdkInt = v.SDK_INT
+
 		self.store = LStore('.freecell4maemo/path.json')
 		self.store.load()
-		self.lasturi = self.store.getEntry('myUri')
-		print ("uri from LStore:",self.lasturi)
+		self.savedUri = self.store.getEntry('myUri')
+		logging.info('SaF: Uri from LStore %s' % self.savedUri)
+
+
+	def act_intent(self):
+		logging.info("SaF: act_intent")
+		activity.bind(on_activity_result=self.rec_intent)
+
+
+	def deact_intent(self):
+		logging.info("SaF: deact_intent")
+		activity.unbind(on_activity_result=self.rec_intent)
+
+
+	def get_storage(self):
+		if jnius is None:
+			return None
+
+		logging.info("SaF: get_storage")
+
+		if self.savedUri is not None:
+			uri = Uri.parse(self.savedUri)
+			tree = DocumentFile.fromTreeUri(CurrentActivity, uri)
+			if tree is not None:
+				# print("pickedDir:",tree)
+				if tree.canRead() and tree.canWrite():
+					logging.info('SaF: storage known')
+					return tree;
+
+		logging.info('SaF: storage unknown, ask user')
+		self.act_intent()
+		self.set_intent()
+		return None
 
 	def set_intent(self):
 		if jnius is None:
 			return
+
 		logging.info("SaF: set_intent")
-		
+
 		myintent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
 
 		# aus GPSLogger:
-		#myintent.putExtra("android.content.extra.SHOW_ADVANCED", true);
-		#myintent.putExtra("android.content.extra.FANCY", true);
+		#myintent.putExtra("android.content.extra.SHOW_ADVANCED", True);
+		#myintent.putExtra("android.content.extra.FANCY", True);
+		# das tut nichts sichtbares.
 
 		myintent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
 		myintent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
 		myintent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
 
-
 		# /tree/primary:.freecell4maemo
 		# /tree/primary%3A.freecell4maemo
 
-		# directory vorgeben?:
-		# pickerUri = Uri.parse("/sdcard/.freecell4maemo")
-		#pickerUri = Uri.parse("/tree/primary:.freecell4maemo")
-		# pickerUri = Uri.parse(str("/tree/primary%3A.freecell4maemo")
+		if self.sdkInt >= 26:
+			# erst ab api 26 verfügbar, sonst exception !
 
-		myUri = "content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo"
-		pickerUri = Uri.parse(myUri)
-		pickedDir = DocumentFile.fromTreeUri(CurrentActivity, pickerUri)
-		print("pickedDir:",pickedDir)
-		print("canRead:",pickedDir.canRead())
-		print("canWrite:",pickedDir.canWrite())
+			# directory vorgeben (wäre wünschenswert):
+			# (erst ab android 8 (Oreo), api 26)
 
-		myintent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, myUri);
-		# das bewirkt nichts.
+			myUri = "content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo"
+			# wie bekommen wir das auf systemgerechte art?
+
+			#print("************** myUri test:",myUri)
+
+			myintent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, myUri);
+			# das nützt alles nichts - oder wie lässt sich das zuverlässig
+			# testen?
 
 		# getContentResolver().takePersistableUriPermission(uri, takeFlags);
+		# ? was soll das bewirken ? wird möglicheweise oben schon abgedeckt ?
 
 		CurrentActivity.startActivityForResult(myintent, self.REQUEST_CODE)
 
-		# self.jString = jnius.autoclass('java.lang.String')
+
+	def writer(self, filename, flags = 'w'):
+		# flags can be "r", "w", "wt", "wa", "rw" or "rwt"
+		# r: read, w:write, t: truncate, a: append.
+
+		if jnius is None:
+			return None
+		if self.savedUri is None:
+			return None
+
+		# (flags ist bei diesem writer hier unbenutzt)
+		return SaFWriter(self.savedUri, filename,flags)
+
+
+	def reader(self, filename, flags = 'r'):
+
+		if jnius is None:
+			return None
+		if self.savedUri is None:
+			return None
+
+		# (flags ist bei diesem reader hier irrelevant)
+		return SaFReader(self.savedUri, filename,flags)
 
 
 	@mainthread
@@ -106,80 +253,20 @@ class SaF(object):
 			logging.info("SaF: rec_intent")
 			msg = ""
 			tree_uri = intent.getData()
-			print("getPath:",tree_uri.getPath())
+			# print("getPath:",tree_uri.getPath())
 			# /tree/63EB-7808:freecell
 			#  O.K. der selektierte pfad kommt hier in spezieller Form an.
-			print("getEncodedPath;",tree_uri.getEncodedPath())
+			# print("getEncodedPath;",tree_uri.getEncodedPath())
 
 			myUri = tree_uri.toString()
 			print("toString:",myUri,type(myUri))
             # content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo
             # Das sollte irgendwie gespeichert werden, damit wir beim start
-            # überprüfen können, ob gesetzt.
+            # überprüfen können, ob schon gesetzt.
 
+            # Speichern.
 			self.store.setEntry('myUri',myUri)
 			self.store.store()
+			self.savedUri = myUri
 
-            # Anwenden:
-
-			# ok. nun gehen wir so vor wie im muster (GPSApplication)
-			uri = Uri.parse(myUri)
-			print("uri:",uri)
-
-			pickedDir = DocumentFile.fromTreeUri(CurrentActivity, uri)
-			print("pickedDir:",pickedDir)
-
-			# Anmerkung: Um ein file zu finden zu bekannter uri:
-			#  fromSingleUri(context,uri)
-
-			dbFile = pickedDir.findFile("database_copy.db");
-			if dbFile is None:
-				dbFile = pickedDir.createFile("", "database_copy.db");
-
-			print("dbfile:",dbFile)
-			print("zugeh. uri:",dbFile.getUri().toString())
-
-			print("canRead:",dbFile.canRead())
-			print("canWrite:",dbFile.canWrite())
-
-			# Damit liess sich ein leeres file database_copy.db im 
-			# ausgewählten Verzeichnis erzeugen!.
-
-			# der java output stream muss dann über den contentresolver bezogen
-			# werden. (Da drin ist also die security zuhause.). Einen os Filehandle
-			# bekommen wir nicht ?
-
-			# java:
-			# output = GPSApplication.getInstance().getContentResolver().openOutputStream(dbFile.getUri(), "rw")
-
-			ostream = CurrentActivity.getContentResolver().openOutputStream(dbFile.getUri(), "rw")
-			print("stream:",ostream)
-
-			# das ist ein normales java.io.OutputStream objekt - also android unabh.
-			# da lässt sich vielleicht etwas tun!
-
-			s = "hello file extended"
-			ostream.write(s.encode())
-			# so get das !!
-
-			ostream.flush()
-			ostream.close()
-
-			'''
-			Also das funktioniert soweit.
-			Für die Anwendung jedoch brauchen wir androidx klassen.
-			(z.B.
-			  - androidx.documentfile.provider.DocumentFile
-			  - androidx.preference.PreferenceManager
-			)
-			Diese werden von pyjnius (noch) nicht unterstützt müssten
-			also in java selbst programmiert werden.
-			'''
-
-	def act_intent(self):
-		logging.info("SaF: act_intent")
-		activity.bind(on_activity_result=self.rec_intent)
-
-	def deact_intent(self):
-		logging.info("SaF: deact_intent")
-		activity.unbind(on_activity_result=self.rec_intent)
+			self.deact_intent()
