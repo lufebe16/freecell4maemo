@@ -8,11 +8,11 @@ from base import LBase, LStreamIO
 #=============================================================================
 
 class LOsReader(LBase):
-	def __init__(self, path, flags = 'rb'):
+	def __init__(self, path):
 		self.path = path
 		self.file = None
 		try:
-			self.file = open(self.path, mode = flags)
+			self.file = open(self.path, mode = 'rb')
 		except IOError:
 			pass
 
@@ -27,11 +27,11 @@ class LOsReader(LBase):
 #=============================================================================
 
 class LOsWriter(LBase):
-	def __init__(self, path, flags = 'wb'):
+	def __init__(self, path):
 		self.path = path
 		self.file = None
 		try:
-			self.file = open(self.path, mode = flags)
+			self.file = open(self.path, mode = 'wb')
 		except IOError:
 			pass
 
@@ -49,17 +49,17 @@ class LOsIO(LStreamIO):
 	def __init__(self, rootdir = None):
 		self.root = rootdir
 
-	def writer(self, filename, flags = 'wb'):
+	def writer(self, filename):
 		if self.root is not None:
-			return LOsWriter(self.root+"/"+filename, flags)
+			return LOsWriter(self.root+"/"+filename)
 		else:
-			return LOsWriter(filename, flags)
+			return LOsWriter(filename)
 
-	def reader(self, filename, flags = 'rb'):
+	def reader(self, filename):
 		if self.root is not None:
-			return LOsReader(self.root+"/"+filename, flags)
+			return LOsReader(self.root+"/"+filename)
 		else:
-			return LOsReader(filename, flags)
+			return LOsReader(filename)
 
 #=============================================================================
 

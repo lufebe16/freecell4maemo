@@ -32,8 +32,10 @@ if jnius is not None:
 from lstore import LStore
 from base import LBase, LStreamIO
 
+#=============================================================================
+
 class SaFWriter(object):
-	def __init__(self, treeuri, filename, flags = 'w'):
+	def __init__(self, treeuri, filename):
 
 		logging.info("SaFWriter: __init__")
 
@@ -72,9 +74,10 @@ class SaFWriter(object):
 		except:
 			print("error writing output stream")
 
+#=============================================================================
 
 class SaFReader(object):
-	def __init__(self, treeuri, filename, flags = 'r'):
+	def __init__(self, treeuri, filename):
 
 		self.istream = None
 		try:
@@ -116,8 +119,10 @@ class SaFReader(object):
 		#print("read finally:",data)
 		return data
 
+#=============================================================================
+
 class SaF(LStreamIO):
-	def __init__(self, rootdir = "myDocuments"):
+	def __init__(self, rootdir = "myDocuments", ioholder = None):
 		super(SaF, self).__init__()
 
 		if jnius is None:
@@ -126,6 +131,7 @@ class SaF(LStreamIO):
 		logging.info("SaF: __init__")
 
 		self.rootdir = rootdir
+		self.ioholder = ioholder
 		self.REQUEST_CODE = 7  # ??
 		b = Build()
 		v = Version()
@@ -187,8 +193,8 @@ class SaF(LStreamIO):
 		myintent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
 
 		# aus GPSLogger:
-		#myintent.putExtra("android.content.extra.SHOW_ADVANCED", True);
-		#myintent.putExtra("android.content.extra.FANCY", True);
+		myintent.putExtra("android.content.extra.SHOW_ADVANCED", True);
+		myintent.putExtra("android.content.extra.FANCY", True);
 		# das tut nichts sichtbares.
 
 		myintent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -198,49 +204,35 @@ class SaF(LStreamIO):
 		# /tree/primary:.freecell4maemo
 		# /tree/primary%3A.freecell4maemo
 
+		myUri = "content://com.android.externalstorage.documents/tree/primary%3A"
+		#myUri = myUri+self.rootdir
+		myUri = myUri+"myNewDir" # TEST
+		
+		print("***myUri test:",myUri)
+		
 		if self.sdkInt >= 26:
 			# erst ab api 26 verfügbar, sonst exception !
-
-			# directory vorgeben (wäre wünschenswert):
-			# (erst ab android 8 (Oreo), api 26)
-
-			myUri = "content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo"
-			# wie bekommen wir das auf systemgerechte art?
-
-			#print("************** myUri test:",myUri)
-
 			myintent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, myUri);
-			# das nützt alles nichts - oder wie lässt sich das zuverlässig
-			# testen?
 
-		# getContentResolver().takePersistableUriPermission(uri, takeFlags);
-		# ? was soll das bewirken ? wird möglicheweise oben schon abgedeckt ?
+			# das nützt alles nichts - oder wie lässt sich das zuverlässig
+			# testen. Das gerät ist nach dem ersten test natürlich nicht mehr
+			# unberührt und erinnert sich u.U.
+			pass
+
 
 		CurrentActivity.startActivityForResult(myintent, self.REQUEST_CODE)
 
 
-	def writer(self, filename, flags = 'w'):
-		# flags can be "r", "w", "wt", "wa", "rw" or "rwt"
-		# r: read, w:write, t: truncate, a: append.
-
-		if jnius is None:
-			return None
-		if self.savedUri is None:
-			return None
-
-		# (flags ist bei diesem writer hier unbenutzt)
-		return SaFWriter(self.savedUri, filename,flags)
+	def writer(self, filename):
+		if jnius is None: return None
+		if self.savedUri is None: return None
+		return SaFWriter(self.savedUri, filename)
 
 
-	def reader(self, filename, flags = 'r'):
-
-		if jnius is None:
-			return None
-		if self.savedUri is None:
-			return None
-
-		# (flags ist bei diesem reader hier irrelevant)
-		return SaFReader(self.savedUri, filename,flags)
+	def reader(self, filename):
+		if jnius is None: return None
+		if self.savedUri is None: return None
+		return SaFReader(self.savedUri, filename)
 
 
 	@mainthread
@@ -254,19 +246,37 @@ class SaF(LStreamIO):
 			msg = ""
 			tree_uri = intent.getData()
 			# print("getPath:",tree_uri.getPath())
-			# /tree/63EB-7808:freecell
+			# z.B: /tree/63EB-7808:freecell
 			#  O.K. der selektierte pfad kommt hier in spezieller Form an.
 			# print("getEncodedPath;",tree_uri.getEncodedPath())
+			# z.B: /tree/primary%3A.freecell4maemo
 
 			myUri = tree_uri.toString()
 			print("toString:",myUri,type(myUri))
-            # content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo
-            # Das sollte irgendwie gespeichert werden, damit wir beim start
-            # überprüfen können, ob schon gesetzt.
+			# content://com.android.externalstorage.documents/tree/primary%3A.freecell4maemo
+			# Das sollte irgendwie gespeichert werden, damit wir beim start
+			# überprüfen können, ob schon gesetzt.
 
-            # Speichern.
+			# Soll die Wahl über reboots pesistent machen:
+			takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+			CurrentActivity.getContentResolver().takePersistableUriPermission(tree_uri, takeFlags);
+			# Ja funktioniert tatsächlich!
+			# zu dieser Funktionalität gehören auch:
+			#   ContentResolver.getPersistedUriPermissions()
+			# um alle diese pesistenten Permissions aufzulisten und
+			#   ContentResolver.releasePersistableUriPermission(Uri, int)
+			# um solche persistenten Permissions aufzuräumen, falls nötig.
+
+			# Speichern.
 			self.store.setEntry('myUri',myUri)
 			self.store.store()
 			self.savedUri = myUri
 
+			# uns als Empfänger wieder abmelden.
 			self.deact_intent()
+
+			# installieren wir uns in ioholder.
+			if self.ioholder is not None:
+				self.ioholder.streamIO = self
+
+#=============================================================================

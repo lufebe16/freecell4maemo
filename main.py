@@ -74,6 +74,7 @@ from kivy.uix.actionbar import *
 from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.utils import platform
+from kivy.properties import ObjectProperty
 
 import time
 import random
@@ -85,7 +86,8 @@ import json
 import os
 import sys
 
-from base import LBase
+from base import LBase, LStreamIOHolder
+from saf import SaF
 
 # Size of the inset border for the window
 FULLSCREEN_BORDER_WIDTH = 10
@@ -899,9 +901,7 @@ class MoveCardTask(Task):
         self.stop()
 
 
-from saf import SaF
-
-class FreeCell(object):
+class FreeCell(LStreamIOHolder):
 
     # Handle of android return key
     def key_input(self, window, key, scancode, codepoint, modifier):
@@ -912,67 +912,54 @@ class FreeCell(object):
         else:
             return False  # delegate
 
-    def getStorage(self):
-        fstorage = ".freecell4maemo"
-        if requestStoragePerm():
-            logging.info('FreeCell: storage perm granted')
+    # muster mit clock.schedule:
+    #def my_callback(dt):
+    #    print('My callback is called', dt)
+    #event = Clock.schedule_interval(my_callback, 1 / 30.)
 
-            from android.storage import primary_external_storage_path
-            primary_ext_storage = primary_external_storage_path()
-            fstorage = primary_ext_storage+"/"+fstorage
-            if not os.path.exists(fstorage):
-                os.makedirs(fstorage)
-        else:
-            logging.info('FreeCell: storage perm denied')
-
-            if not os.path.exists(fstorage):
-                os.makedirs(fstorage)
-
-        logging.info(fstorage)
-        return fstorage
+    # Overrides in LStreamIOHolder.
+    def on_streamIO(self,instance,obj):
+        print("streamIO: instance at",instance)
+        print("streamIO: new obj  at",obj)
+        self.store.setIO(obj)
+        self.reload_game(None)
+        super(FreeCell,self).on_streamIO(instance,obj)
 
     def getStreamIO(self, rootdir = None):
+
+        if rootdir is not None and not os.path.exists(rootdir):
+            os.makedirs(rootdir)
+        defaultIO = LOsIO(rootdir)
+
         if platform=='android':
             from jnius import autoclass
             Version = autoclass("android.os.Build$VERSION")
             v = Version()
             print("os version running:",v.SDK_INT)
 
-            # wenn android api < 26 über getstorage oben, sonst über saf.
+            # wenn android api >= 21, dann soll ein Speicher mit
+            # SAF angegeben werden ansonsten wird der private
+            # app speicher verwendet.
 
-            if v.SDK_INT < 26:
-                if requestStoragePerm():
-                    logging.info('FreeCell: storage perm granted')
-
-                    from android.storage import primary_external_storage_path
-                    fstorage = primary_external_storage_path()
-                    if rootdir is not None:
-                        fstorage = fstorage+"/"+rootdir
-                    if not os.path.exists(fstorage):
-                        os.makedirs(fstorage)
-                    return LOsIO(fstorage)
-                else:
-                    logging.info('FreeCell: storage perm denied')
-                    if rootdir is not None and not os.path.exists(rootdir):
-                        os.makedirs(rootdir)
-                    return LOsIO(rootdir)
-            else:
-                saf = SaF(rootdir)
-                storage = saf.get_storage()
+            if v.SDK_INT >= 21:
+                safio = SaF(rootdir,self)
+                storage = safio.get_storage()
                 if storage is not None:
                     logging.info('FreeCell: storage access (saf) granted')
-                    return saf
+                    return safio
                 else:
                     logging.info('FreeCell: storage perm (saf) not set')
-                    return LOsIO(rootdir)
+                    return defaultIO
+            else:
+                return defaultIO
         else:
             logging.info('FreeCell: os filesystem storage')
-            if rootdir is not None and not os.path.exists(rootdir):
-                os.makedirs(rootdir)
-            return LOsIO(rootdir)
+            return defaultIO
 
 
-    def __init__(self):
+    def __init__(self, **kw):
+        super(FreeCell, self).__init__(**kw)
+
         # Init the rendering objects to None for now; they will be properly populated during the expose_event handling
         self.greenColour = None
         self.redColour = None
@@ -983,63 +970,8 @@ class FreeCell(object):
         self.animIsComplete = False
         self.startCardOrder = None
 
-        '''
-        self.saf = SaF()
-        # man müsste hier angeben können, welche directory SaF reservieren
-        # soll.
-
-        if platform=='android':
-
-            # tests mit saf:
-            storage = self.saf.get_storage()
-            if storage is not None:
-                # test:
-                writer = self.saf.writer("mytext.txt","rw")
-                s = "hallo dies war nun der writer"
-                writer.write(s.encode())
-
-                # wird so:
-                # self.store = LStore("current.json")
-                # self.store.setIO(self.saf)
-
-            # soweit ginge das: der picker dialog erscheint. Und die
-            # Callback routine wird aufgerufen und liefert auch etwas
-            # vernünftiges.
-            # wir könne aber mit diesen andgaben nichts vernünftiges
-            # tun. Direkter zugriff auf die pfade ist nicht möglich, sondern
-            # man muss das android api benutzen.
-            # ausserdem besteht ein synchronisation problem beim programm
-            # start (aber das ist das gleiche wie auch bei requestStoragePerm
-            # unten)
-
-            #from plyer import storagepath
-            #sdcard = str(storagepath.get_external_storage_dir())
-            #logging.info(sdcard)
-            # -> geht auch (plyer in buildozer.spec angeben)
-
-            # another test (-> das war eine ente!)
-            #from jnius import autoclass
-            #context = autoclass('android.content.Context')
-            #path_file = context.getExternalFilesDir(None)
-            #path = path_file.getAbsolutePath()
-            #logging.info(path)
-
-            fstorage = self.getStorage()
-            iomgr = LOsIO(fstorage)
-            self.store = LStore('current.json')
-            self.store.setIO(iomgr)
-
-            #self.store = LStore(fstorage+'/current.json')
-        else:
-            iomgr = LOsIO('.freecell4maemo')
-            self.store = LStore('current.json')
-            self.store.setIO(iomgr)
-
-            #self.store = LStore('.freecell4maemo/current.json')
-        '''
-
+        # json store.
         self.store = LStore('current.json')
-        self.store.setIO(self.getStreamIO(".freecell4maemo"))
 
         # Taskq fuer Animationssequenzen
         self.taskQ = TaskQ()
@@ -1083,14 +1015,6 @@ class FreeCell(object):
         # Initial Moves as member
         self.moves = []
 
-        '''
-        # try opening the save file
-        newgame = not self.read_current_game()
-
-        # Initialize the cards
-        self.setupCards(newgame)
-        '''
-
         # Default to manual play mode
         self.smartPlayMode = False
 
@@ -1130,13 +1054,17 @@ class FreeCell(object):
             background_image=grey0)
         self.header.setMenu(self.hmenu)
 
-        #self.done = menuButton(self.hmenu,text='Exit',command=self.exit_menu_cb)
+
+        #self.done = menuButton(
+        #    self.hmenu, text='Exit', command=self.exit_menu_cb)
         self.restartgame = menuButton(
             self.hmenu, text='Restart', command=self.restart_game_menu_cb)
         self.newgame = menuButton(
             self.hmenu, text='New', command=self.new_game_menu_cb)
         self.about = menuButton(
             self.hmenu, text='About', command=self.about_menu_show)
+        #self.reloadgame = menuButton(
+        #    self.hmenu, text='Reload', command=self.reload_game)
         self.aboutBox = None
 
         self.read_settings()
@@ -1163,6 +1091,7 @@ class FreeCell(object):
         self.drawingArea.bind(size=self.configure_event_cb)
 
         Window.bind(on_keyboard=self.key_input)
+        #Window.bind(on_resize=self.configure_event_resize)
 
         # Track the currently selected card
         self.selectedCardRect = Rect()
@@ -1242,6 +1171,8 @@ class FreeCell(object):
         return True
 
     def save_game(self):
+        if self.startCardOrder is None: return
+
         logging.info("FreeCell: save_game")
         self.save_current_game()
         self.save_settings()
@@ -1254,6 +1185,24 @@ class FreeCell(object):
         logging.info("FreeCell: exit_menu_cb")
         self.save_game()
         stopTouchApp()
+
+    def reload_game(self, widget):
+        logging.info('FreeCell: reload_game (start)')
+        self.undoStack = []
+        self.acesStacks = [
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            for i in range(NUMACES)
+        ]
+        self.freecellStacks = [
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            for i in range(NUMFREECELLS)
+        ]
+        newgame = not self.read_current_game()
+        self.setupCards(newgame)
+        self.setCardRects()
+        self.redrawOffscreen()
+        self.initMoves()
+        logging.info('FreeCell: reload_game (ended)')
 
     def restart_game_menu_cb(self, widget):
         logging.info('FreeCell: restart_game_menu_cb')
@@ -1269,7 +1218,20 @@ class FreeCell(object):
         self.setupCards(False)
         self.setCardRects()
         self.redrawOffscreen()
-        self.updateRect(None)
+
+    def new_game_menu_cb(self, widget):
+        self.undoStack = []
+        self.acesStacks = [
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            for i in range(NUMACES)
+        ]
+        self.freecellStacks = [
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            for i in range(NUMFREECELLS)
+        ]
+        self.setupCards()
+        self.setCardRects()
+        self.redrawOffscreen()
 
     def about_menu_hide(self, instance, pos):
         if (self.aboutBox != None):
@@ -1289,23 +1251,9 @@ class FreeCell(object):
             self.aboutBox.bind(on_touch_down=self.about_menu_hide)
             self.aboutBox.open()
 
-    def new_game_menu_cb(self, widget):
-        self.undoStack = []
-        self.acesStacks = [
-            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
-            for i in range(NUMACES)
-        ]
-        self.freecellStacks = [
-            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
-            for i in range(NUMFREECELLS)
-        ]
-        self.setupCards()
-        self.setCardRects()
-        self.redrawOffscreen()
-        self.updateRect(None)
+    # Tastatur: nicht angebunden (originalcode).
 
-    # Tastatur: nicht angebunden.
-
+    '''
     def key_press_cb(self, widget, event, *args):
         if (event.keyval == gtk.keysyms.F6):
             if (self.windowFullscreen):
@@ -1350,6 +1298,7 @@ class FreeCell(object):
         elif (event.keyval == gtk.keysyms.F8):
             #print "Zoom -!"
             self.debugMode = True
+    '''
 
     def undo_move_cb(self, widget):
         self.undoMove()
@@ -1489,20 +1438,12 @@ class FreeCell(object):
 
         # Get the enclosing rects for click-testing
         self.mainCardsRects = self.getStackListEnclosingRect(self.acesStacks)
-        self.freeCellsRect = self.getStackListEnclosingRect(
-            self.freecellStacks)
+        self.freeCellsRect = self.getStackListEnclosingRect(self.freecellStacks)
         self.acesRect = self.getStackListEnclosingRect(self.acesStacks)
 
     def delete_event_cb(self, widget, event, data=None):
         # False means okay to delete
         return False
-
-    def updateRect(self, rect):
-        # Queue a redraw of an onscreen rect
-        if (rect == None):
-            x, y, w, h = 0, 0, self.windowWidth, self.windowHeight
-        else:
-            x, y, w, h = rect.getLeftTopWidthHeight()
 
     def redrawOffscreen(self):
         # Redraw the game board and all card stacks
@@ -1520,11 +1461,20 @@ class FreeCell(object):
 
         for cardStack in self.mainCardStacks:
             cardStack.drawStack(self.drawingArea)
+    '''
+    def configure_event_resize(self, widget, width, height):
+        logging.info("FreeCell: configure_event_resize %s" % widget)
+        logging.info("FreeCell: configure_event_resize %d" % width)
+        logging.info("FreeCell: configure_event_resize %d" % height)
+
+        #self.configure_event_cb(widget,0)
+        widget.update_viewport()
+    '''
 
     def configure_event_cb(self, widget, event):
         # Handle the window configuration event at startup or when changing to/from fullscreen
 
-        logging.info("FreeCell: configure_event_cb")
+        logging.info("FreeCell: configure_event_cb %s" % widget)
 
         # Allocate a Pixbuf to serve as the offscreen buffer for drawing of the game board
 
@@ -1562,8 +1512,6 @@ class FreeCell(object):
 
         #		logging.info("clearCardSelection: (%d,%d) %dx%d" %(self.selectedCardRect.getLeftTopWidthHeight()))
 
-        if (self.selectedCardRect != None):
-            self.updateRect(self.selectedCardRect)
         self.clearSelections()
         self.selectedCardRect = None
         self.selectedCardType = None
@@ -1890,8 +1838,22 @@ class FreeCell(object):
         self.checkGameOver()
         return True
 
+# tip: wegen black screen. Wo einbauen ?
+# Window.update_viewport()
 
 class FreeCellApp(App):
+
+    # muster mit clock.schedule:
+    #def my_callback(dt):
+    #    print('My callback is called', dt)
+    #event = Clock.schedule_interval(my_callback, 1 / 30.)
+    #event = Clock.schedule_once(my_callback, 1 / 30.)
+
+    def windowUpdate(self,dt):
+        logging.info("FreeCellApp: extra window draw")
+        if self.freeCell is not None:
+            self.freeCell.configure_event_cb(self.freeCell.drawingArea,0)
+
     def __init__(self):
         super(FreeCellApp, self).__init__()
         self.freeCell = None
@@ -1899,11 +1861,14 @@ class FreeCellApp(App):
 
     def on_start(self):
         logging.info("FreeCellApp: on_start")
+        io = self.freeCell.getStreamIO(".freecell4maemo")
+        self.freeCell.streamIO = io
+        # ANM: diese Zuweisung triggert 'reload_game'.
 
-        newgame = not self.freeCell.read_current_game()
-        self.freeCell.setupCards(newgame)
-        self.freeCell.initMoves()
-        pass
+        # Wenn beim aufstarten gleich fullscreen 'entsteht' wird
+        # der Bildschirm nicht gezeichent (schwarz). Zeichnen wir
+        # halt nochmals!
+        Clock.schedule_once(self.windowUpdate, 3)
 
     def on_stop(self):
         logging.info("FreeCellApp: on_stop")
@@ -1946,3 +1911,4 @@ if __name__ == "__main__":
     logging.info("FreeCellApp: before run()")
     FreeCellApp().run()
     logging.info("FreeCellApp: after run()")
+    

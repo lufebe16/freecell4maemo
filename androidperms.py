@@ -4,6 +4,13 @@ try:
 except ImportError:
     jnius = None
 
+'''
+try:
+  from android import activity
+except ImportError:
+  activity = None
+'''
+
 # link address of related support library:
 # https://maven.google.com/com/android/support/support-v4/24.1.1/support-v4-24.1.1.aar
 
@@ -51,6 +58,28 @@ class AndroidPerms(object):
         logging.info("androidperms: invoke permission dialog")
         self.currentActivity.requestPermissions(permissions, 0)
         return
+
+    # versuch:
+    # das geht nicht. denn dazu bräuchte es eine zusätzliche implementierung
+    # in python-for-android. Effektiv implementiert sind dort nur
+    # onNewIntent und onActivityResult. onRequestPermissionsResult müsste
+    # man (die vorlage dort wär vielleich hilfreich) selbst implementieren ...
+    '''
+    def act_perm(self):
+        if activity is not None:
+            logging.info("SaF: act_permresult")
+            activity.bind(on_request_rermissions_result=self.rec_perm)
+
+    def deact_perm(self):
+        if activity is not None:
+            logging.info("SaF: deact_intent")
+            activity.unbind(on_request_rermissions_result=self.rec_perm)
+
+    def rec_perm(self, requestCode, permissions, grantResults):
+        logging.info("SaF: act_permresult")
+        print("permresult",requestCode,permissions,grantResults)
+        self.deact_perm()
+    '''
 
 
 def getStoragePerm():

@@ -32,7 +32,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys
 
 # (str) Application versioning (method 1)
-version = 1.3
+version = 1.4
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
