@@ -1843,11 +1843,26 @@ class FreeCell(LStreamIOHolder):
 
 class FreeCellApp(App):
 
-    # muster mit clock.schedule:
-    #def my_callback(dt):
-    #    print('My callback is called', dt)
-    #event = Clock.schedule_interval(my_callback, 1 / 30.)
-    #event = Clock.schedule_once(my_callback, 1 / 30.)
+    # test MANAGE_EXTERNAL_STORAGE grant:
+    def openSettingsAllFilesAccess(self):
+        if platform == "android":
+            import jnius
+            Intent = jnius.autoclass('android.content.Intent')
+            Uri = jnius.autoclass('android.net.Uri')
+            PythonActivity = jnius.autoclass('org.kivy.android.PythonActivity')
+            currentActivity = jnius.cast('android.app.Activity', PythonActivity.mActivity)
+            Settings = jnius.autoclass('android.provider.Settings')
+
+            # activity: AppCompatActivity) {
+            intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+            # diese aktion ist nicht bekannt, obwohl in der dockumentation
+            # vorhanden. Auchd die klasse ist richtig: android.provider.Settings.
+            # kommt es auf die target version an? (Erst ab API 31 ?)
+
+            # Solches zeug zu testen wird nun also wirklich überaus
+            # mühselig! - geht womöglich nur auf einem Android 11 gerät.
+            pass
+
 
     def windowUpdate(self,dt):
         logging.info("FreeCellApp: extra window draw")
@@ -1868,7 +1883,11 @@ class FreeCellApp(App):
         # Wenn beim aufstarten gleich fullscreen 'entsteht' wird
         # der Bildschirm nicht gezeichent (schwarz). Zeichnen wir
         # halt nochmals!
+        Clock.schedule_once(self.windowUpdate, 2)
         Clock.schedule_once(self.windowUpdate, 3)
+        Clock.schedule_once(self.windowUpdate, 5)
+
+        # self.openSettingsAllFilesAccess()
 
     def on_stop(self):
         logging.info("FreeCellApp: on_stop")
