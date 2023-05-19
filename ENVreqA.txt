@@ -1,0 +1,14 @@
+appdirs==1.4.4
+-e git+https://github.com/kivy/buildozer.git@3ebc09e885457db4747e67a1250c2aea1ca7a046#egg=buildozer
+colorama==0.4.6
+Cython==0.29.32
+Jinja2==3.1.2
+Kivy==2.1.0
+packaging==22.0
+pep517==0.6.0
+permutation==0.4.0
+pip==22.3.1
+setuptools==65.2.0
+six==1.16.0
+toml==0.10.2
+wheel==0.37.1

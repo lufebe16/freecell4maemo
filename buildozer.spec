@@ -32,7 +32,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys
 
 # (str) Application versioning (method 1)
-version = 1.4
+version = 1.5
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -55,7 +55,7 @@ presplash.filename = %(source.dir)s/icons/gnome-freecell384.png
 icon.filename = %(source.dir)s/icons/gnome-freecell48.png
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
-orientation = all
+orientation = portrait, landscape
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
@@ -154,11 +154,26 @@ android.skip_update = True
 
 # (str) Extra xml to write directly inside the <manifest> element of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML code
-#android.extra_manifest_xml = ./src/android/extra_manifest.xml
+
+android.extra_manifest_xml = ./temp/extra_manifest.xml
+
+# > ist in der aktuellen Produktionsversion fehlerhaft. Backslash vor
+# " hilft dort.
+# ANM: in der aktuell verwendeten wersion habe ich das korrigiert.
 
 # (str) Extra xml to write directly inside the <manifest><application> tag of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML arguments:
-#android.extra_manifest_application_arguments = ./src/android/extra_manifest_application_arguments.xml
+
+android.extra_manifest_application_arguments = ./temp/extra_app.xml
+
+# application xml: zum testen. ist in der offiziellen version nicht
+# vorhanden.
+
+# android.extra_manifest_application_xml = ./temp/provider_entry.xml
+
+# ANM: Für die app ist das hinzufügen eines Provider entries nur notwendig, wenn
+# wir eine DocumentProvider klasse implementieren und verwenden. Also
+# aktuell nicht. Braucht auch add-resources (s.u)
 
 # (str) Full name including package path of the Java class that implements Python Service
 # use that parameter to set custom Java class instead of PythonService
@@ -194,6 +209,17 @@ android.skip_update = True
 # 1) android.add_assets = source_asset_relative_path
 # 2) android.add_assets = source_asset_path:destination_asset_relative_path
 #android.add_assets =
+
+
+# das geht in der aktuellen version von p4a leider noch nicht. Aber mit
+# dem aktuellen clone (branch develop) schon (s.u)
+
+# android.add_resources = ./temp/provider_paths.xml:xml/provider_paths.xml
+
+# ANM: braucht auch die aktivierung von extra-manifest-application-xml (s.o)
+# und die Angaben dort müsse übereinstimmen, weil gradle build das alles
+# minutiös überprüft.
+
 
 # (list) Gradle dependencies to add
 android.gradle_dependencies =
@@ -323,7 +349,7 @@ android.debug_artifact = apk
 #p4a.commit = HEAD
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
-#p4a.source_dir =
+p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
 #p4a.local_recipes =
@@ -397,7 +423,7 @@ ios.codesign.allowed = false
 [buildozer]
 
 # (int) Log level (0 = error only, 1 = info, 2 = debug (with command output))
-log_level = 1
+log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
 warn_on_root = 1
