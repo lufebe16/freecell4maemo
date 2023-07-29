@@ -11,6 +11,7 @@ android/tmp/*
 android/*.apk
 *.sublime*
 mk
+ENV
 ENV*/*
 ARM*/*
 bin/*

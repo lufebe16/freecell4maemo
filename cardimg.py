@@ -141,25 +141,25 @@ class Action:
 
 
 class ButtonLine(BoxLayout):
-    def __init__(self):
+    def __init__(self,initsize=1.0):
         super(ButtonLine, self).__init__()
         self.orientation = 'horizontal'
         #self.orientation = 'vertical'
         if self.orientation == 'horizontal':
-            self.size_hint = (1.0, 0.1)
+            self.size_hint = (initsize, 0.1)
         else:
-            self.size_hint = (0.1, 1.0)
+            self.size_hint = (0.1, initsize)
 
 
 class ButtonColm(BoxLayout):
-    def __init__(self):
+    def __init__(self,initsize=1.0):
         super(ButtonColm, self).__init__()
         #self.orientation = 'horizontal'
         self.orientation = 'vertical'
         if self.orientation == 'horizontal':
-            self.size_hint = (1.0, 0.1)
+            self.size_hint = (initsize, 0.1)
         else:
-            self.size_hint = (0.1, 1.0)
+            self.size_hint = (0.1, initsize)
 
 
 # -----------------------------------------
@@ -184,7 +184,7 @@ class PlayGround(RelativeLayout):
             ty = touch.py - self.pos[1]
             #self.lastHitPos = touch.pos
             self.lastHitPos = (tx, ty)
-            #print('touch down event - ',touch.profile,touch.pos,self.lastHitPos)
+            # print('touch down event - ',touch.profile,touch.pos,self.lastHitPos)
 
         return super(PlayGround, self).on_touch_down(touch)
 
@@ -218,8 +218,8 @@ class MainWindow(BoxLayout):
     def __init__(self):
         super(MainWindow, self).__init__()
         self.orientation = 'vertical'
-        # self.bind(size=self._update_rect, pos=self._update_rect)
-        # (see p4a issue 1724)
+        self.bind(size=self._update_rect, pos=self._update_rect)
+        # (see p4a issue 1724):
         self.bind(size=Clock.schedule_once(self._ur, 0.1))
         self.full = False
 

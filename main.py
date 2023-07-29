@@ -19,10 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# To Do:
-# - on-screen toggle for smart move mode
-# - intelligent use of empty stacks when moving columns
-# - smart-move a column?
+# Original Comment (Maemo):
 """	
 Freecell4Maemo is an implementation of the classic Freecell cardgame for the Nokia "Maemo" platform.
 	
@@ -36,7 +33,6 @@ class Card - a playing card; important members are cardnum(0-51), screen locatio
 class CardStack - a stack of Card objects; important members are screen location/size, cards, "empty stack" pixbuf, stack suit
 class Freecell - the main class for the app; uses the other classes as needed
 
-
 Some significant points about the main "Freecell" class are:
 
 - the __init__ method creates all the basic object members, loads all the card images, creates the GUI
@@ -47,15 +43,17 @@ Some significant points about the main "Freecell" class are:
 - all GraphicContext objects are created in the configure event handler
 - the configure handler also triggers a call to set the rects of the CardStacks (important for switching between fullscreen and smallscreen)
 - the real game logic is in the button_press_event handler (and yes, it gets a little messy)
-
 """
+
+# Follows the Kivy Port. GTK removed:
+# (There is also some experimental code left from tests/ideas not activated.)
 
 ABOUT_TEXT = """
 Freecell4Maemo:
            Copyright 2008, Roy Wood
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
-           Copyright 2016-2022, Lukas Beck
+           Copyright 2016-2023, Lukas Beck
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (see <http://www.gnu.org/licenses/>).
 """
@@ -88,6 +86,8 @@ import sys
 
 from base import LBase, LStreamIOHolder
 from saf import SaF
+
+STORAGESUBDIR = ".freecell4maemo"
 
 # Size of the inset border for the window
 FULLSCREEN_BORDER_WIDTH = 10
@@ -792,14 +792,14 @@ class CardStack(object):
         return self.rect.enclosesXY(x, y)
 
     def clearSelection(self):
-        #		print ('stack deselect')
+        #print ('stack deselect')
         if self.emptyStackCardImage != None:
             self.emptyStackCardImage.selected = False
         for c in self.cards:
             c.clearSelection()
 
     def setSelection(self, x, y):
-        #		print ('stack select')
+        #print ('stack select')
         if self.emptyStackCardImage != None:
             if (self.rect.enclosesXY(x, y)):
                 self.emptyStackCardImage.selected = False
@@ -970,8 +970,13 @@ class FreeCell(LStreamIOHolder):
         self.animIsComplete = False
         self.startCardOrder = None
 
-        # json store.
+        # json store for current game.
         self.store = LStore('current.json')
+        self.store.setIO(LOsIO(STORAGESUBDIR))
+
+        # json store for settings.
+        self.settings = LStore('settings.json')
+        self.settings.setIO(LOsIO(STORAGESUBDIR))
 
         # Taskq fuer Animationssequenzen
         self.taskQ = TaskQ()
@@ -1012,6 +1017,9 @@ class FreeCell(LStreamIOHolder):
         # Keep track of all card stack moves so we can undo moves
         self.undoStack = []
 
+        # Keep track of all undo moves so we can redo moves
+        self.redoStack = []
+
         # Initial Moves as member
         self.moves = []
 
@@ -1034,14 +1042,19 @@ class FreeCell(LStreamIOHolder):
 
         # Knöpfe am rechten Rand.
 
-        self.menu = ButtonColm()
-
-        self.undo = Button(text='Undo', background_normal=grey1)
+        self.undo = Button(text='Undo', background_normal=grey0)
         self.undo.bind(on_press=self.undo_move_cb)
-        self.menu.add_widget(self.undo)
+
+        self.redo = Button(text='Redo', background_normal=grey1)
+        self.redo.bind(on_press=self.redo_move_cb)
+        self.redo.size_hint = (1.0,0.4)
 
         self.automove = Button(text='Auto', background_normal=grey2)
         self.automove.bind(on_press=self.auto_move_cb)
+
+        self.menu = ButtonColm()
+        self.menu.add_widget(self.undo)
+        self.menu.add_widget(self.redo)
         self.menu.add_widget(self.automove)
 
         # Menubar
@@ -1053,7 +1066,6 @@ class FreeCell(LStreamIOHolder):
             text='Freecell for Maemo on Android',
             background_image=grey0)
         self.header.setMenu(self.hmenu)
-
 
         #self.done = menuButton(
         #    self.hmenu, text='Exit', command=self.exit_menu_cb)
@@ -1158,6 +1170,9 @@ class FreeCell(LStreamIOHolder):
         self.store.setEntry('deal',self.startCardOrder)
         self.store.store()
 
+        self.settings.setEntry('saf',False)
+        self.settings.store()
+
     def read_current_game(self):
         self.store.load()
         self.moves = self.store.getEntry('moves')
@@ -1207,6 +1222,7 @@ class FreeCell(LStreamIOHolder):
     def restart_game_menu_cb(self, widget):
         logging.info('FreeCell: restart_game_menu_cb')
         self.undoStack = []
+        self.redoStack = []
         self.acesStacks = [
             CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
             for i in range(NUMACES)
@@ -1221,6 +1237,7 @@ class FreeCell(LStreamIOHolder):
 
     def new_game_menu_cb(self, widget):
         self.undoStack = []
+        self.redoStack = []
         self.acesStacks = [
             CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
             for i in range(NUMACES)
@@ -1303,6 +1320,9 @@ class FreeCell(LStreamIOHolder):
     def undo_move_cb(self, widget):
         self.undoMove()
 
+    def redo_move_cb(self, widget):
+        self.redoMove()
+
     def auto_move_cb(self, widget):
         logging.info('FreeCell: auto_move_cb')
         #gobject.timeout_add(500, self.auto_move_wrapper)
@@ -1367,10 +1387,17 @@ class FreeCell(LStreamIOHolder):
         if len(self.undoStack) > 0:
             srcStack, dstStack = self.undoStack[-1]
             self.moveCard(dstStack, srcStack)
-            # The call to moveCard actually records the undo as a move, so
-            # we need to pop the last TWO entries in the stack to correct this.
-            del self.undoStack[-1]
-            del self.undoStack[-1]
+            self.clearCardSelection()
+
+    def redoMove(self):
+
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
+
+        # Redo a move
+        if len(self.redoStack) > 0:
+            srcStack, dstStack = self.redoStack[-1]
+            self.moveCard(dstStack, srcStack)
             self.clearCardSelection()
 
     def setupCards(self, doShuffle=True):
@@ -1543,8 +1570,41 @@ class FreeCell(LStreamIOHolder):
                      (SUITNAMES[srcSuit], CARDNAMES[srcCardVal],
                       SUITNAMES[dstSuit], CARDNAMES[dstCardVal]))
 
+        isUndo = False
+        if len(self.undoStack) > 0:
+            undoSrcStack, undoDstStack = self.undoStack[-1]
+            if undoSrcStack == dstStack and undoDstStack == srcStack:
+                isUndo = True
+
+        isRedo = False
+        if len(self.redoStack) > 0:
+            redoSrcStack, redoDstStack = self.redoStack[-1]
+            if redoSrcStack == dstStack and redoDstStack == srcStack:
+                isRedo = True
+
         # Logik:
-        self.undoStack.append((srcStack, dstStack))
+
+        logging.info("moveCard: isUndo %s" % isUndo)
+        logging.info("moveCard: isRedo %s" % isRedo)
+
+        if isUndo:
+            logging.debug("moveCard: pop from undo")
+            del self.undoStack[-1]
+            self.redoStack.append((srcStack, dstStack))
+
+        if isRedo:
+            logging.debug("moveCard: pop from redo")
+            del self.redoStack[-1]
+            self.undoStack.append((srcStack, dstStack))
+
+        if not isUndo and not isRedo:
+            self.undoStack.append((srcStack, dstStack))
+            if len(self.redoStack) > 0:
+                logging.debug("moveCard: clear redo stack")
+                self.redoStack = []
+
+        logging.debug("moveCard: undoStack %s" % len(self.undoStack))
+        logging.debug("moveCard: redoStack %s" % len(self.redoStack))
 
         x, y, w, h = srcStack.getTopCardRect().getLeftTopWidthHeight()
         fromX, fromY = x, y
@@ -1650,11 +1710,13 @@ class FreeCell(LStreamIOHolder):
         #	x, y = event.x, event.y
         #!!
         dstType, dstRect, dstStack = self.xyToCardStackInfo(x, y)
-        #print('button_press_event',dstType,dstRect,dstStack)
+
+        # print('button_press_event',dstType,dstRect,dstStack)
 
         if (dstType == None):
             # Didn't click on a valid target, so clear the previous click selection and bail
             self.clearCardSelection()
+            #print ('didnt click a valid target')
 
         elif (self.selectedCardType == None):
 
@@ -1662,58 +1724,14 @@ class FreeCell(LStreamIOHolder):
                 return True
 
             # There was no previous selection, so select target (if valid) and bail
-            if (dstStack.getNumCards() > 0):
-                if (not self.smartPlayMode):
-                    self.setCardSelection(dstType, dstStack, dstRect, x, y)
+            self.setCardSelection(dstType, dstStack, dstRect, x, y)
+            #print ('clicked a valid target')
 
-                else:
-                    # Move the card to an ace stack, main stack, or free cell stack, if possible
-                    movedCard = False
-                    origDstType, origDstStack, origDstRect = dstType, dstStack, dstRect
-
-                    # Call it srcStack to make this clearer
-                    srcStack = dstStack
-                    srcCardVal, srcCardSuit, srcCardSuitColour = srcStack.getCardValueSuitColour(
-                        -1)
-
-                    # Try the aces stack first
-                    dstStack = self.acesStacks[srcCardSuit]
-                    dstCardVal, dstSuit, dstSuitColour = dstStack.getCardValueSuitColour(
-                        -1)
-
-                    if (dstCardVal == srcCardVal - 1):
-                        self.moveCard(srcStack, dstStack)
-                        self.clearCardSelection()
-                        movedCard = True
-
-                    if (movedCard == False):
-                        # Try a non-empty main stack
-                        for dstStack in self.mainCardStacks:
-                            dstCardVal, dstSuit, dstSuitColour = dstStack.getCardValueSuitColour(
-                                -1)
-                            if (dstCardVal >= 0
-                                    and dstCardVal == srcCardVal + 1
-                                    and dstSuitColour != srcCardSuitColour):
-                                self.moveCard(srcStack, dstStack)
-                                self.clearCardSelection()
-                                movedCard = True
-                                break
-
-                    if (movedCard == False):
-                        # Try an empty main stack or a freecell stack
-                        tmpStacks = self.mainCardStacks + self.freecellStacks
-                        for dstStack in tmpStacks:
-                            if (dstStack.getNumCards() <= 0):
-                                self.moveCard(srcStack, dstStack)
-                                self.clearCardSelection()
-                                movedCard = True
-                                break
-
-                    if (movedCard == False):
-                        self.setCardSelection(dstType, origDstStack, dstRect)
         else:
             if not (self.taskQ.taskQsAreEmpty()):
                 return True
+
+            moved = True
 
             # A card is currently selected, so see if it can be moved to the target
             srcStack = self.selectedCardStack
@@ -1761,6 +1779,8 @@ class FreeCell(LStreamIOHolder):
                 # Move selected card to a free cell, if it is open
                 if (dstNumCards <= 0 or self.debugMode):
                     self.moveCard(srcStack, dstStack)
+                else:
+                    moved = False
 
             elif (dstType == ACE_TYPE):
                 # Move selected card to an ace stack, if it matches suit and is in order
@@ -1769,6 +1789,8 @@ class FreeCell(LStreamIOHolder):
                     % (srcSuit, dstSuit, dstNumCards, srcCardVal, dstCardVal))
                 if srcSuit == dstSuit and srcCardVal == dstCardVal + 1:
                     self.moveCard(srcStack, dstStack)
+                else:
+                    moved = False
 
             elif (dstNumCards <= 0 and runLength <= 1):
                 # Move a single card to an empty stack
@@ -1777,41 +1799,26 @@ class FreeCell(LStreamIOHolder):
             elif (dstNumCards <= 0 and runLength > 1):
                 dialogResult = MOVE_CARD_ID
 
-                # Diese Auswahl ist unnoetig und eher stoerend. - weggelassen. Wir
+                # Hier war im Original eine Auswahl, ob die ganze Sequenz oder
+                # nur eine Karte transferiert werden sollte:
+
+                # Diese Auswahl war unnoetig und eher stoerend. - weggelassen. Wir
                 # transferieren immer soviele wie moeglich. Falls das im Spielverlauf
                 # nicht gewuenscht ist, kann der Spieler immer noch ueber die freien
                 # Zellen mit Einzelkarten operieren. Das braucht gleichviel Klicks, aber
                 # die nervige Rückfrage, welche den Spielfluss stört, entfällt so.
 
-                if (numFreeCells > 0):
-                    # Move a card or a column to an empty stack?
-                    #					self.cardOrColumnDialog.show()
-                    #					dialogResult = self.cardOrColumnDialog.run()
-                    #					self.cardOrColumnDialog.hide()
-                    dialogResult = 'multi'
-
-                # Repaint the mess made by the dialog box
-
-
-#				gtk.gdk.window_process_all_updates()
-#				x, y, w, h = 0, 0, self.windowWidth, self.windowHeight
-#				self.drawingArea.window.draw_drawable(self.drawingArea.get_style().fg_gc[gtk.STATE_NORMAL], self.offscreenPixmap, x, y, x, y, w, h)
-
-                if (dialogResult == MOVE_CARD_ID):
-                    # Just move a single card after all
-                    self.moveCard(srcStack, dstStack)
-                else:
-                    # Nope, move the run
-                    tempStacks = []
-                    for i in range(min(numFreeCells, runLength - 1)):
-                        for j in range(NUMFREECELLS):
-                            if (self.freecellStacks[j].getNumCards() <= 0):
-                                self.moveCard(srcStack, self.freecellStacks[j])
-                                tempStacks.insert(0, self.freecellStacks[j])
-                                break
-                    self.moveCard(srcStack, dstStack)
-                    for s in tempStacks:
-                        self.moveCard(s, dstStack)
+                # move the whole run
+                tempStacks = []
+                for i in range(min(numFreeCells, runLength - 1)):
+                    for j in range(NUMFREECELLS):
+                        if (self.freecellStacks[j].getNumCards() <= 0):
+                            self.moveCard(srcStack, self.freecellStacks[j])
+                            tempStacks.insert(0, self.freecellStacks[j])
+                            break
+                self.moveCard(srcStack, dstStack)
+                for s in tempStacks:
+                    self.moveCard(s, dstStack)
 
             elif (srcRunMeetsDst and suitColoursWork
                   and numFreeCells >= dstSrcDelta - 1):
@@ -1828,9 +1835,15 @@ class FreeCell(LStreamIOHolder):
                 for s in tempStacks:
                     self.moveCard(s, dstStack)
 
+            else:
+                moved = False
+                pass
+
             # Clear selection
             self.clearCardSelection()
-
+            if not moved:
+                self.setCardSelection(dstType, dstStack, dstRect, x, y)
+ 
             logging.debug(
                 "-----------------------------------------------------------------------------"
             )
@@ -1843,6 +1856,7 @@ class FreeCell(LStreamIOHolder):
 
 class FreeCellApp(App):
 
+    '''
     # test MANAGE_EXTERNAL_STORAGE grant:
     def openSettingsAllFilesAccess(self):
         if platform == "android":
@@ -1862,7 +1876,7 @@ class FreeCellApp(App):
             # Solches zeug zu testen wird nun also wirklich überaus
             # mühselig! - geht womöglich nur auf einem Android 11 gerät.
             pass
-
+    '''
 
     def windowUpdate(self,dt):
         logging.info("FreeCellApp: extra window draw")
@@ -1876,7 +1890,7 @@ class FreeCellApp(App):
 
     def on_start(self):
         logging.info("FreeCellApp: on_start")
-        io = self.freeCell.getStreamIO(".freecell4maemo")
+        io = self.freeCell.getStreamIO(STORAGESUBDIR)
         self.freeCell.streamIO = io
         # ANM: diese Zuweisung triggert 'reload_game'.
 
@@ -1923,7 +1937,7 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
     try:
-        os.mkdir('.freecell4maemo')
+        os.mkdir(STORAGESUBDIR)
     except OSError:
         pass
 

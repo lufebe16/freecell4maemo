@@ -130,7 +130,8 @@ class SaF(LStreamIO):
 
 		logging.info("SaF: __init__")
 
-		self.rootdir = rootdir
+		#self.rootdir = rootdir
+		self.root = rootdir
 		self.ioholder = ioholder
 		self.REQUEST_CODE = 7  # ??
 		b = Build()
@@ -148,6 +149,7 @@ class SaF(LStreamIO):
 
 		self.sdkInt = v.SDK_INT
 
+		# die gespeicherte uri aus dem privaten store holen.
 		self.store = LStore('.freecell4maemo/path.json')
 		self.store.load()
 		self.savedUri = self.store.getEntry('myUri')
@@ -227,12 +229,16 @@ class SaF(LStreamIO):
 		if jnius is None: return None
 		if self.savedUri is None: return None
 		return SaFWriter(self.savedUri, filename)
+		# geht nicht: return SaFWriter(self.savedUri, self.root+"/"+filename)
+		# wir können in diesem directory nicht in klassischer art in subdirs
+		# navigieren.
 
 
 	def reader(self, filename):
 		if jnius is None: return None
 		if self.savedUri is None: return None
 		return SaFReader(self.savedUri, filename)
+		# geht nicht: return SaFReader(self.savedUri, self.root+"/"+filename)
 
 
 	@mainthread
@@ -267,7 +273,7 @@ class SaF(LStreamIO):
 			#   ContentResolver.releasePersistableUriPermission(Uri, int)
 			# um solche persistenten Permissions aufzuräumen, falls nötig.
 
-			# Speichern.
+			# uri in den privaten Store speichern.
 			self.store.setEntry('myUri',myUri)
 			self.store.store()
 			self.savedUri = myUri
