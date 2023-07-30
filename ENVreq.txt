@@ -1,9 +1,14 @@
+appdirs
+build
 buildozer
+colorama
 Cython
+Jinja2
 Kivy
+pep517
 permutation
 pip
-python-for-android
 setuptools
 six
+toml
 wheel

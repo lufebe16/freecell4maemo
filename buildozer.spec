@@ -32,7 +32,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys, ENV*, ARM*, *.sublime-*
 
 # (str) Application versioning (method 1)
-version = 1.7
+version = 1.8
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -98,7 +98,7 @@ fullscreen = 1
 #icon.adaptive_background.filename = %(source.dir)s/data/icon_bg.png
 
 # (list) Permissions
-#android.permissions = INTERNET
+# android.permissions = INTERNET
 # (wir steuern das über extra-manifest-xml, s.u.)
 
 # (list) features (adds uses-feature -tags to manifest)
@@ -351,9 +351,15 @@ p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
-#p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
-#p4a.commit = ee9c2570dfc40fdd3afe200ea5d5fa4ea39bf5b5
-p4a.commit = c1ec69c0a95414a5b99498844af144dfeedcba72
+
+# jun10/23: (breaks animations in kivy!)
+# p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
+
+# feb11/23: (o.k.)
+p4a.commit = 56bf7335f08a51ec4e8427dd672e1b25a674026b
+
+# sep05/22: (too old)
+# c1ec69c0a95414a5b99498844af144dfeedcba72
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 #p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android

@@ -36,6 +36,20 @@ class AndroidPerms(object):
         self.currentActivity = jnius.cast(
             'android.app.Activity', self.PythonActivity.mActivity)
 
+        self.environnment = jnius.autoclass(
+            'android.os.Environment')
+
+    def isStorageManager(self):
+        if jnius is None:
+            return False
+        ret = False
+        # ist nur bei neueren Androidversionen vorhanden.
+        try:
+            ret = self.environnment.isExternalStorageManager()
+        except:
+            pass
+        return ret
+
     def getPerm(self, permission):
         if jnius is None:
             return True
@@ -87,15 +101,9 @@ def getStoragePerm():
     return ap.getPerms(
         ["android.permission.WRITE_EXTERNAL_STORAGE"])
 
-def getExternalStoragePerm():
-    ap = AndroidPerms()
-    return ap.getPerms(
-        ["android.permission.WRITE_EXTERNAL_STORAGE"])
-
 def getManageStoragePerm():
     ap = AndroidPerms()
-    return ap.getPerms(
-        ["android.permission.MANAGE_EXTERNAL_STORAGE"])
+    return ap.isStorageManager()
 
 def requestStoragePerm():
     ap = AndroidPerms()

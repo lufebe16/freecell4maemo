@@ -881,7 +881,7 @@ class MoveCardTask(Task):
         self.card.cardImage.pos = (xf, yf)
 
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_out_quad')
-        anim = Animation(x=xt, y=yt, duration=0.17, t='in_out_expo')
+        anim = Animation(x=xt, y=yt, duration=0.19, t='in_out_expo')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_quad')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_back')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_bounce')
@@ -926,10 +926,12 @@ class FreeCell(LStreamIOHolder):
     def getStreamIO(self, rootdir = None):
         storage_path = os.getcwd()
         if platform=='android':
-            from androidperms import getExternalStoragePerm, getManageStoragePerm
+            from androidperms import getStoragePerm, getManageStoragePerm
             from android.storage import primary_external_storage_path
             from android.storage import app_storage_path
-            if getExternalStoragePerm() or getManageStoragePerm():
+            stp = getStoragePerm()
+            stm = getManageStoragePerm()
+            if stp or stm:
                 storage_path = primary_external_storage_path()
             else:
                 storage_path = app_storage_path()
