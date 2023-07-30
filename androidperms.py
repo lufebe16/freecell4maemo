@@ -87,6 +87,15 @@ def getStoragePerm():
     return ap.getPerms(
         ["android.permission.WRITE_EXTERNAL_STORAGE"])
 
+def getExternalStoragePerm():
+    ap = AndroidPerms()
+    return ap.getPerms(
+        ["android.permission.WRITE_EXTERNAL_STORAGE"])
+
+def getManageStoragePerm():
+    ap = AndroidPerms()
+    return ap.getPerms(
+        ["android.permission.MANAGE_EXTERNAL_STORAGE"])
 
 def requestStoragePerm():
     ap = AndroidPerms()

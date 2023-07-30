@@ -63,8 +63,6 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from cardimg import *
 from taskm import *
-from androidperms import requestStoragePerm
-from androidperms import getStoragePerm
 from kivy.clock import Clock
 from kivy.base import stopTouchApp
 from kivy.animation import Animation
@@ -926,36 +924,22 @@ class FreeCell(LStreamIOHolder):
         super(FreeCell,self).on_streamIO(instance,obj)
 
     def getStreamIO(self, rootdir = None):
-
-        if rootdir is not None and not os.path.exists(rootdir):
-            os.makedirs(rootdir)
-        defaultIO = LOsIO(rootdir)
-
+        storage_path = os.getcwd()
         if platform=='android':
-            from jnius import autoclass
-            Version = autoclass("android.os.Build$VERSION")
-            v = Version()
-            print("os version running:",v.SDK_INT)
-
-            # wenn android api >= 21, dann soll ein Speicher mit
-            # SAF angegeben werden ansonsten wird der private
-            # app speicher verwendet.
-
-            if v.SDK_INT >= 21:
-                safio = SaF(rootdir,self)
-                storage = safio.get_storage()
-                if storage is not None:
-                    logging.info('FreeCell: storage access (saf) granted')
-                    return safio
-                else:
-                    logging.info('FreeCell: storage perm (saf) not set')
-                    return defaultIO
+            from androidperms import getExternalStoragePerm, getManageStoragePerm
+            from android.storage import primary_external_storage_path
+            from android.storage import app_storage_path
+            if getExternalStoragePerm() or getManageStoragePerm():
+                storage_path = primary_external_storage_path()
             else:
-                return defaultIO
-        else:
-            logging.info('FreeCell: os filesystem storage')
-            return defaultIO
+                storage_path = app_storage_path()
 
+            logging.info('FreeCell: Home path = %s', storage_path)
+
+        savedir = storage_path+"/"+rootdir
+        if savedir is not None and not os.path.exists(savedir):
+            os.makedirs(savedir)
+        return LOsIO(savedir)
 
     def __init__(self, **kw):
         super(FreeCell, self).__init__(**kw)

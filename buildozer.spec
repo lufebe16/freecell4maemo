@@ -24,15 +24,15 @@ source.include_exts = py,png,jpg,kv,atlas
 source.exclude_exts = pyc
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin
+source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'
 #source.exclude_patterns = license,images/*/*.jpg
-source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys
+source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys, ENV*, ARM*, *.sublime-*
 
 # (str) Application versioning (method 1)
-version = 1.6
+version = 1.7
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -99,6 +99,7 @@ fullscreen = 1
 
 # (list) Permissions
 #android.permissions = INTERNET
+# (wir steuern das über extra-manifest-xml, s.u.)
 
 # (list) features (adds uses-feature -tags to manifest)
 #android.features = android.hardware.usb.host
@@ -155,7 +156,7 @@ android.skip_update = True
 # (str) Extra xml to write directly inside the <manifest> element of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML code
 
-android.extra_manifest_xml = ./temp/extra_manifest.xml
+android.extra_manifest_xml = ./xml/extra_manifest.xml
 
 # > ist in der aktuellen Produktionsversion fehlerhaft. Backslash vor
 # " hilft dort.
@@ -164,7 +165,7 @@ android.extra_manifest_xml = ./temp/extra_manifest.xml
 # (str) Extra xml to write directly inside the <manifest><application> tag of AndroidManifest.xml
 # use that parameter to provide a filename from where to load your custom XML arguments:
 
-android.extra_manifest_application_arguments = ./temp/extra_app.xml
+android.extra_manifest_application_arguments = ./xml/extra_app.xml
 
 # application xml: zum testen. ist in der offiziellen version nicht
 # vorhanden.
@@ -303,7 +304,9 @@ android.copy_libs = 1
 # In past, was `android.arch` as we weren't supporting builds for multiple archs at the same time.
 # android.archs = arm64-v8a, armeabi-v7a
 #android.archs = armeabi-v7a
+
 android.archs = arm64-v8a, armeabi-v7a
+#android.archs = x86_64
 
 # (int) overrides automatic versionCode computation (used in build.gradle)
 # this is not the same as app version and should only be edited if you know what you're doing
@@ -348,7 +351,9 @@ p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
-p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
+#p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
+#p4a.commit = ee9c2570dfc40fdd3afe200ea5d5fa4ea39bf5b5
+p4a.commit = c1ec69c0a95414a5b99498844af144dfeedcba72
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 #p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
