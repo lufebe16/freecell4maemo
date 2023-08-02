@@ -19,6 +19,9 @@ Building:
   $ . ENV/bin/activate
   $ pip install -r ENVreqA.txt
 
+  (At this point it should be possible to run the game on the desktop by
+  just typing './main.py' on the command line.)
+
   Then run buildozer. This will take time. You will also need to accept
   Google licenses, when running it for the first time.
 

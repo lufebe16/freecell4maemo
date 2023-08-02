@@ -15,8 +15,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from kivy.properties import *
-from kivy._event import *
+from kivy.properties import BooleanProperty, ListProperty
+from kivy._event import EventDispatcher
 from kivy.clock import Clock
 
 
@@ -53,7 +53,7 @@ class TaskQ(EventDispatcher):
         self.runQlen = 0
         self.runQmax = 10
         # e.g.
-        self.runSeq = 0.12  # e.g.
+        self.runSeq = 0.08  # e.g.
 
     def scheduleNext(self, dt):
         if (self.waitQlen > 0):
@@ -90,7 +90,7 @@ class TaskQ(EventDispatcher):
         self.waitQ.append(task)
 
     def taskStopped(self, instance, value):
-        if (value == True):
+        if (value is True):
             idx = 0
             while (idx < self.runQlen):
                 if (self.runQ[idx] is instance):

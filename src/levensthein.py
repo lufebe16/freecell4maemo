@@ -22,4 +22,4 @@ def levensthein(s1,s2,maxcnt=52):
                 if (c<d): d = c
                 m[i][k] = d
 
-    return m[l1][l2];
+    return m[l1][l2]

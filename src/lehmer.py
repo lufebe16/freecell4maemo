@@ -53,7 +53,7 @@ def lehmer_from_deal(perm):
     return lehm
 
 def deal_from_lehmer(lehm):
-    
+
     # Der Lehmercode bezeichnet das wievielte Element aus
     # der sortierten Liste ausgebucht wird (von links nach rechts),
     # bis die Liste leer ist. Die ausgebuchten Elemnte bilden eine

@@ -1,12 +1,14 @@
 
 # Freecell4Maemo
 
-This app is a port of the Maemo app 'Freecell For Maemo' from the Nokia N900.
+This is a port of the Maemo app 'Freecell For Maemo' from the Nokia N900.
+The original gtk graphics hsd been replaced by Kivy in order to
+allow building an android app.
 
-As gtk/tkinter was not available on android, the user interface has been
-reimplemented using the Kivy framework.
+It might run on any desktop computer in a python subsystem. Also there
+are build procedures supplied to build an Android App.
 
-The app is open source as of the GNU General Public License (see LICENSE)
+The software is open source as of the GNU General Public License (see LICENSE)
 
 # Usage
 
@@ -21,7 +23,7 @@ is moved instead if possible.
 The 'Auto' button repeatedly moves all top cards to its foundations as long
 as one matches.
 
-# Storage permissions
+# Storage permissions (Android only)
 
 The state of the game is stored in the private app storage section.
 
@@ -36,7 +38,7 @@ on risk.
 
 # Build
 
-To build an apk file out of this repository, you need a GNU/Linux system such as Debian, Ubuntu, Fedora, Gentoo or Archlinux.
+To build an android app out of this repository, you need a GNU/Linux system such as Debian, Ubuntu, Fedora, Gentoo or Archlinux.
 
 For more detailed instructions read README.build
 
