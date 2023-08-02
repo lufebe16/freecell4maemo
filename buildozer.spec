@@ -24,7 +24,7 @@ source.include_exts = py,png,jpg,kv,atlas
 source.exclude_exts = pyc
 
 # (list) List of directory to exclude (let empty to not exclude anything)
-source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp
+source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp, img, xml
 
 # (list) List of exclusions using pattern matching
 # Do not prefix with './'

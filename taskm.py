@@ -53,7 +53,7 @@ class TaskQ(EventDispatcher):
         self.runQlen = 0
         self.runQmax = 10
         # e.g.
-        self.runSeq = 0.13  # e.g.
+        self.runSeq = 0.12  # e.g.
 
     def scheduleNext(self, dt):
         if (self.waitQlen > 0):
@@ -76,6 +76,8 @@ class TaskQ(EventDispatcher):
     def on_waitQ(self, instance, value):
         lastlen = self.waitQlen
         self.waitQlen = len(self.waitQ)
+
+        # print('waitQlen =',self.waitQlen)
 
         if (self.waitQlen > 0 and self.runQlen == 0):
             self.scheduleNext(0)

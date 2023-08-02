@@ -4,7 +4,7 @@
 
 # Freecell4Maemo, Copyright 2008, Roy Wood
 #                 Copyright 2010, Justin Quek
-# Kivy port,			Copyright 2016, Lukas Beck
+# Kivy port,      Copyright 2016, Lukas Beck
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,8 @@ Freecell4Maemo:
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
            Copyright 2016-2023, Lukas Beck
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (see <http://www.gnu.org/licenses/>).
 """
@@ -150,11 +152,6 @@ REGULAR_TYPE = 2
 
 # Folder containing the card images
 CARDFOLDER = "./card_images"
-
-# Response constants for the "Move card or column" dialog (OK/CANCEL are the constants that the hildon.Note dialog returns)
-
-#TOPORT?
-MOVE_CARD_ID = 'single'
 
 # MOVE_COLUMN_ID = gtk.RESPONSE_OK
 
@@ -597,6 +594,7 @@ class Card(object):
         self.rect = Rect(left, top, width, height)
         self.pixBuf = pixBuf
         self.cardImage = None
+        self.cardIsMoving = False
 
     def getSuit(self):
         return self.cardNum // CARDS_PER_SUIT
@@ -879,9 +877,10 @@ class MoveCardTask(Task):
         yt = self.drawingArea.size[1] - self.toY - self.card.rect.height
         #self.card.cardImage.pos_hint = {}
         self.card.cardImage.pos = (xf, yf)
+        self.card.cardIsMoving = True
 
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_out_quad')
-        anim = Animation(x=xt, y=yt, duration=0.19, t='in_out_expo')
+        anim = Animation(x=xt, y=yt, duration=0.40, t='in_out_expo')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_quad')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_back')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_bounce')
@@ -897,7 +896,7 @@ class MoveCardTask(Task):
 
     def animEnd(self, instance, value):
         self.stop()
-
+        self.card.cardIsMoving = False
 
 class FreeCell(LStreamIOHolder):
 
@@ -1366,9 +1365,6 @@ class FreeCell(LStreamIOHolder):
 
     def undoMove(self):
 
-        if not (self.taskQ.taskQsAreEmpty()):
-            return
-
         # Undo a move
         if len(self.undoStack) > 0:
             srcStack, dstStack = self.undoStack[-1]
@@ -1376,9 +1372,6 @@ class FreeCell(LStreamIOHolder):
             self.clearCardSelection()
 
     def redoMove(self):
-
-        if not (self.taskQ.taskQsAreEmpty()):
-            return
 
         # Redo a move
         if len(self.redoStack) > 0:
@@ -1552,7 +1545,13 @@ class FreeCell(LStreamIOHolder):
             -1)
         dstCardVal, dstSuit, dstSuitColour = dstStack.getCardValueSuitColour(
             -1)
-        logging.info("moveCard: move %s %s to %s %s" %
+        dstNumCards = dstStack.getNumCards()
+        
+        if dstNumCards == 0:
+            logging.info("moveCard: move %s %s to empty stack" %
+                     (SUITNAMES[srcSuit], CARDNAMES[srcCardVal]))
+        else:
+            logging.info("moveCard: move %s %s to %s %s" %
                      (SUITNAMES[srcSuit], CARDNAMES[srcCardVal],
                       SUITNAMES[dstSuit], CARDNAMES[dstCardVal]))
 
@@ -1728,13 +1727,19 @@ class FreeCell(LStreamIOHolder):
             dstCardVal, dstSuit, dstSuitColour = dstStack.getCardValueSuitColour(
                 -1)
             dstSrcDelta = dstCardVal - srcCardVal
+            ''
+            logging.debug(
+                "srcCard = %s, srcNumCards = %d" % (cardnum_to_sym(srcCardVal+srcSuit*CARDS_PER_SUIT), srcNumCards))
+            logging.debug(
+                "dstCard = %s, dstNumCards = %d, dstSrcDelta = %d" % (cardnum_to_sym(dstCardVal+dstSuit*CARDS_PER_SUIT), dstNumCards, dstSrcDelta))
+            '''
             logging.debug(
                 "srcSuit = %d, srcSuitColour = %d, srcCardVal = %d, srcNumCards = %d"
                 % (srcSuit, srcSuitColour, srcCardVal, srcNumCards))
             logging.debug(
                 "dstSuit = %d, dstSuitColour = %d, dstCardVal = %d, dstSrcDelta = %d"
                 % (dstSuit, dstSuitColour, dstCardVal, dstSrcDelta))
-
+            '''
             numFreeCells = 0
             for cardStack in self.freecellStacks:
                 if (cardStack.getNumCards() <= 0):
@@ -1744,9 +1749,15 @@ class FreeCell(LStreamIOHolder):
             for i in range(srcNumCards):
                 cardVal, cardSuit, cardSuitColour = srcStack.getCardValueSuitColour(
                     srcNumCards - i - 1)
+                ''
+                logging.debug(
+                    "card #%d: cardSym = %s"
+                    % (srcNumCards - i - 1, cardnum_to_sym(cardVal+cardSuit*CARDS_PER_SUIT)))
+                '''
                 logging.debug(
                     "card #%d: cardVal = %d, cardSuit = %d, cardSuitColour = %d"
                     % (srcNumCards - i - 1, cardVal, cardSuit, cardSuitColour))
+                '''
                 if (cardVal == srcCardVal + i
                         and cardSuitColour == (srcSuitColour + i) % 2):
                     runLength += 1
@@ -1783,13 +1794,13 @@ class FreeCell(LStreamIOHolder):
                 self.moveCard(srcStack, dstStack)
 
             elif (dstNumCards <= 0 and runLength > 1):
-                dialogResult = MOVE_CARD_ID
 
                 # Hier war im Original eine Auswahl, ob die ganze Sequenz oder
-                # nur eine Karte transferiert werden sollte:
+                # nur eine einzelne Karte transferiert werden sollte:
 
-                # Diese Auswahl war unnoetig und eher stoerend. - weggelassen. Wir
-                # transferieren immer soviele wie moeglich. Falls das im Spielverlauf
+                # Diese Auswahl war unnoetig und im spielablauf eher stoerend.
+                # (weggelassen)
+                # Wir transferieren immer soviele wie moeglich. Falls das im Spielverlauf
                 # nicht gewuenscht ist, kann der Spieler immer noch ueber die freien
                 # Zellen mit Einzelkarten operieren. Das braucht gleichviel Klicks, aber
                 # die nervige Rückfrage, welche den Spielfluss stört, entfällt so.

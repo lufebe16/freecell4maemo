@@ -1,0 +1,66 @@
+
+Detailed Android build Instructions:
+
+  NOTES:
+  1) You need a linux workstation (either native or virtual). No graphic
+     desktop is needed, cmdline only is sufficient.
+  2) All builds need a working (fairly fast) internet connection and
+     6 GB of free disk space.
+  3) You may wish to adapt some parameters in the buildozer.spec file,
+     especially e.g android.arch or log_level.
+
+Building:
+
+  Prepare a virtualenv for python (currently python3.11 or earlier) in the
+  main directory. Create and enter a virtualenv, and the add required python
+  packages as listed in ENVreqA.txt:
+
+  $ virualenv ENV
+  $ . ENV/bin/activate
+  $ pip install -r ENVreqA.txt
+
+  Then run buildozer. This will take time. You will also need to accept
+  Google licenses, when running it for the first time.
+
+  $ buildozer android debug
+
+  If you like to build a release version refer to the documentation of
+  the python-for-android project.
+
+Prerequisites/Hints (may need root):
+
+  Needs python version 3.x up to 3.10 (3.11 is currently not yet
+  supported by Kivy).
+
+  On freshly installed systems you may need to add about the
+  following packages:
+
+  - ant
+  - autoconf
+  - build-essential
+  - gradle           (version 7.6.x preferred)
+  - ccache
+  - gettext
+  - javasdk          (ubuntu: default jdk, at least java-11)
+  - virtualenv       (python-virtualenv)
+  - zip
+  - unzip
+  - development packages as
+    - libffi-dev, libltdl-dev, zlib1g-dev
+
+  (these requirements may depend from the actually chossen base 
+  installation and also may change in future)
+
+  On a 'simple' gentoo installation the following packages had to be
+  installed in addition:
+
+  - dev-python/pip
+  - dev-python/virtualenv
+  - dev-python/cython
+  - dev-media-libs/gstreamer
+  - dev-vcs/git
+  - dev-java/ant
+
+  For further instructions consult buildozers build instructions.
+
+LB230731.
