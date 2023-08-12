@@ -39,7 +39,8 @@ class CardImg(Image):
 
     def on_selected(self, instance, value):
         if (value):
-            self.color = [0.7, 0.7, 0.7, 1.0]
+            self.color = [0.5, 0.7, 0.7, 1.0]
+            #self.color = [1.0, 0.3, 0.9, 1.0]
         else:
             self.color = [1.0, 1.0, 1.0, 1.0]
         self.canvas.ask_update()
@@ -118,22 +119,36 @@ class CardImg(Image):
 #        return super(CardImg,self).on_touch_move(touch)
 
 # -----------------------------------------
-# Actions Managment
 
+from kivy.uix.behaviors import ButtonBehavior
+import kivy
 
-class Action:
-    def __init__(self, start, trigger):
-        self.start = start
-        self.trigger = trigger
+class ImageButton(ButtonBehavior, Image):
+    def __init__(self,bkgnd=(0,0,0,1),**kw):
 
-    def endCallback(self):
-        #print ('trigger')
-        self.trigger
-        pass
+        # fit_mode: erst ab version 2.2.1 - android benutzt aber noch 2.2.0!
+        if kivy.__version__ < "2.2.1":
+            # print ('version is than 2.2.0 or lower')
+            if "fit_mode" in kw:
+                if kw["fit_mode"] == "contain":
+                    # fit_mode='contain' emulieren:
+                    self.allow_stretch = True
+                    self.keep_ratio = True
+                if kw["fit_mode"] == "fill":
+                    # fit_mode='contain' emulieren:
+                    self.allow_stretch = True
+                    self.keep_ratio = False
+                del kw["fit_mode"]
 
-    def run(self):
-        #print ('start')
-        self.start
+        super(ImageButton, self).__init__(**kw)
+        self.bind(size=self.update_rect, pos=self.update_rect)
+        with self.canvas.before:
+            Color(bkgnd[0],bkgnd[1],bkgnd[2],bkgnd[3])  # gruen wie ein Spieltisch sollte das sein.
+            self.rect = Rectangle(size=self.size, pos=self.pos)
+
+    def update_rect(self, instance, value):
+        self.rect.pos = instance.pos
+        self.rect.size = instance.size
 
 
 # -----------------------------------------
@@ -163,8 +178,47 @@ class ButtonColm(BoxLayout):
 
 
 # -----------------------------------------
-# Spielfeld.
+# Settings.
+'''
+from kivy.uix.button import Button
+from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.switch import Switch
 
+class SettingsPage(BoxLayout):
+    def __init__(self):
+        super(SettingsPage, self).__init__()
+        self.orientation = 'vertical'
+        self.bind(size=self.update_rect, pos=self.update_rect)
+
+        self.header = Button(text='Settings')
+        self.header.size_hint = (1.0,0.1)
+        self.add_widget(self.header)
+
+        self.btn1 = Switch()
+        self.btn1.size_hint = (1.0,0.1)
+        self.add_widget(self.btn1)
+        self.add_widget(BoxLayout())
+
+        with self.canvas.before:
+            Color(0.5, 0.7, 0.5, 1)
+            self.rect = Rectangle(size=self.size, pos=self.pos)
+
+    def update_rect(self, instance, value):
+        self.rect.pos = instance.pos
+        self.rect.size = instance.size
+
+    def add_setting(self,widget):
+        pass
+        self.add_widget(widget)
+
+    def addButton(self,widget,size=1.0):
+        pass
+        self.add_widget(widget)
+
+'''
+# -----------------------------------------
+# Spielfeld.
 
 class PlayGround(RelativeLayout):
     lastHitPos = ListProperty([])
@@ -206,6 +260,93 @@ class PlayGround(RelativeLayout):
     #def on_pos(self,pos):
     #  pass
 
+# -----------------------------------------
+# ActionLine mit action buttions.
+
+class ActionLine(ButtonColm):
+    def __init__(self,initsize=1.0):
+        self.buttons = []
+        self.invertOrder = True
+        super(ActionLine, self).__init__(initsize)
+
+    def addButton(self,widget,size=1.0):
+        self.buttons.append([widget,size])
+        if self.orientation == "vertical":
+            widget.size_hint = (1.0,size)
+        else:
+            widget.size_hint = (size,1.0)
+        self.add_widget(widget)
+
+    def on_orientation(self,instance,value):
+        # fix orientation of children
+        for but in self.buttons:
+            if self.orientation == "vertical":
+                but[0].orientation = "horizontal"
+                but[0].size_hint = (1.0,but[1])
+            else:
+                but[0].orientation = "vertical"
+                but[0].size_hint = (but[1],1.0)
+
+        # invert order of children
+        if self.invertOrder:
+            self.children.reverse()
+
+# -----------------------------------------
+# Program area mit action line
+
+class ProgramArea(ButtonLine):
+    def __init__(self,header,table,action,size,initsize=1.0):
+        super(ProgramArea, self).__init__(initsize)
+        self.table = table
+        self.header = [header,size]
+        self.action = [action,size]
+        self.addHeader()
+        self.add_widget(table)
+        self.addAction()
+        self.actionStack = []
+
+    def setOrientation(self):
+        if self.orientation == "vertical":
+            self.action[0].orientation = "horizontal"
+            self.action[0].size_hint = (1.0,self.action[1])
+            self.header[0].orientation = "horizontal"
+            self.header[0].size_hint = (1.0,self.header[1])
+        else:
+            self.action[0].orientation = "vertical"
+            self.action[0].size_hint = (self.action[1],1.0)
+            self.header[0].orientation = "vertical"
+            self.header[0].size_hint = (self.header[1],1.0)
+
+    def addHeader(self):
+        self.setOrientation()
+        self.add_widget(self.header[0])
+
+    def remHeader(self):
+        self.remove_widget(self.header[0])
+
+    def addAction(self):
+        self.setOrientation()
+        self.add_widget(self.action[0])
+
+    def remAction(self):
+        self.remove_widget(self.action[0])
+
+    def pushAction(self,action,size):
+        self.remAction()
+        self.actionStack.append(self.action)
+        self.action = [action,size]
+        self.addAction()
+
+    def popAction(self):
+        if self.actionStack:
+            self.remAction()
+            self.action = self.actionStack[-1]
+            del self.actionStack[-1]
+            self.addAction()
+
+    def on_orientation(self,instance,value):
+        print ('on_orientation',instance,value)
+        self.setOrientation()
 
 # -----------------------------------------
 # Hauptfenster mit gruenem Hintergrund.
@@ -215,13 +356,15 @@ from kivy.core.window import Window
 from kivy.utils import platform
 
 class MainWindow(BoxLayout):
-    def __init__(self):
+    def __init__(self, game):
         super(MainWindow, self).__init__()
         self.orientation = 'vertical'
         self.bind(size=self._update_rect, pos=self._update_rect)
         # (see p4a issue 1724):
         self.bind(size=Clock.schedule_once(self._ur, 0.1))
         self.full = False
+        self.game = game
+        self.add_widget(self.game)
 
         with self.canvas.before:
             Color(0, 0.7, 0.1, 1)  # gruen wie ein Spieltisch sollte das sein.
@@ -233,6 +376,11 @@ class MainWindow(BoxLayout):
     def _update_rect(self, instance, value):
         self.rect.pos = instance.pos
         self.rect.size = instance.size
+        if instance.size[0] > instance.size[1]:
+            self.game.orientation = "horizontal"
+        else:
+            self.game.orientation = "vertical"
+        #print('_update_rect',instance.size)
 
     '''
     def _fs(self, d):

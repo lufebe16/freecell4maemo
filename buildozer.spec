@@ -32,7 +32,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp, img, xml
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys, ENV*, ARM*, *.sublime-*
 
 # (str) Application versioning (method 1)
-version = 1.8
+version = 1.9
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]

@@ -51,16 +51,20 @@ class TaskQ(EventDispatcher):
         self.waitQlen = 0
         self.runQ = []
         self.runQlen = 0
-        self.runQmax = 10
+        self.runQmax = 52
         # e.g.
         self.runSeq = 0.08  # e.g.
 
     def scheduleNext(self, dt):
         if (self.waitQlen > 0):
+            # run as long as there is enough place in the runQ
+            # do not run more than one job with the same name
+            # at the same time.
             if (self.runQlen < self.runQmax):
-                #print ('scheduleNext')
-                self.runQ.append(self.waitQ[0])
-                del self.waitQ[0]
+                names = [ t.name for t in self.runQ ]
+                if self.waitQ[0].name not in names:
+                    self.runQ.append(self.waitQ[0])
+                    del self.waitQ[0]
 
         if (self.waitQlen > 0 or self.runQlen > 0):
             Clock.schedule_once(self.scheduleNext, self.runSeq)
@@ -76,9 +80,6 @@ class TaskQ(EventDispatcher):
     def on_waitQ(self, instance, value):
         lastlen = self.waitQlen
         self.waitQlen = len(self.waitQ)
-
-        # print('waitQlen =',self.waitQlen)
-
         if (self.waitQlen > 0 and self.runQlen == 0):
             self.scheduleNext(0)
 

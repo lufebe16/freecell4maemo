@@ -20,20 +20,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import logging
 from src.freecell import FreeCellApp, STORAGESUBDIR
 
 if __name__ == "__main__":
-
-    #logging.basicConfig(level=logging.INFO)
-    #logging.basicConfig(level=logging.DEBUG,force=True)
-    logging.basicConfig(level=logging.DEBUG)
 
     try:
         os.mkdir(STORAGESUBDIR)
     except OSError:
         pass
 
-    logging.info("FreeCellApp: before run()")
     FreeCellApp().run()
-    logging.info("FreeCellApp: after run()")

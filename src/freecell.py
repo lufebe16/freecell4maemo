@@ -59,6 +59,12 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (see <http://www.gnu.org/licenses/>).
 """
 
+#import logging
+
+from kivy.config import Config
+Config.set('kivy','log_level','debug')
+from kivy.logger import Logger as logging
+
 from kivy.app import App
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -75,7 +81,7 @@ from kivy.properties import ObjectProperty
 
 import time
 import random
-import logging
+
 import math
 import bisect
 
@@ -86,6 +92,7 @@ import sys
 from base import LBase, LStreamIOHolder
 from saf import SaF
 
+# storage dir.
 STORAGESUBDIR = ".freecell4maemo"
 
 # Size of the inset border for the window
@@ -148,6 +155,7 @@ NUMACES = 4
 FREECELL_TYPE = 0
 ACE_TYPE = 1
 REGULAR_TYPE = 2
+STACK_TYPE = ["FreeCell","AceStack","PlayStack"]
 
 # Folder containing the card images
 CARDFOLDER = "./card_images"
@@ -181,6 +189,14 @@ def cardsym_to_num(ss):
             break
     return cs*CARDS_PER_SUIT + cc
 
+def cardnum_to_txt(cn):
+    if (cn < NUMCARDS):
+        cc = cn % CARDS_PER_SUIT
+        c = CARDSYM[cc]
+        cs = cn // CARDS_PER_SUIT
+        s = SUITNAMES[cs]+" "+CARDNAMES[cc]
+        return s
+    return ""
 
 #=============================================================================
 # Darstellung mit Gross und Klein Alpha (52-er system).
@@ -593,6 +609,12 @@ class Card(object):
 
         self.drawCardImg(drawable, left, top)
 
+    def setTop(self, drawable):
+        # set the current card on top of the z-order.
+        if (self.cardImage != None):
+            drawable.clear_widgets([self.cardImage])
+            drawable.add_widget(self.cardImage)
+
     def drawCardImg(self, drawable, left, top):
         #		print (self.cardNum,self.pixBuf)
         #		print (left,top,drawable.size)
@@ -661,7 +683,7 @@ class CardStack(object):
     # The CardStack can draw itself; if there are no Cards, then the emptyStackPixBuf is displayed
     # The CardStack's yOffset controls the vertical offset of cards in the stack
 
-    def __init__(self, left, top, emptyStackPixBuf, stackSuit, yOffset=0):
+    def __init__(self, left, top, emptyStackPixBuf, stackSuit, yOffset, stackType):
         self.left = int(left)
         self.top = int(top)
         self.emptyStackCardImage = None
@@ -669,6 +691,7 @@ class CardStack(object):
         self.stackSuit = stackSuit
         self.cards = []
         self.yOffset = yOffset
+        self.type = stackType
 
         # (folgendes dient nur der bemessung des rects).
         tmpimg = CardImg(source=emptyStackPixBuf)
@@ -679,6 +702,9 @@ class CardStack(object):
         #		print ('CardStack init',self.left,self.top,self.cardWidth,self.cardHeight)
 
         self.rect = Rect(self.left, self.top, self.cardWidth, self.cardHeight)
+
+    def stackType(self):
+        return self.type
 
     def getNumCards(self):
         return len(self.cards)
@@ -836,11 +862,14 @@ class MoveCardTask(Task):
         self.fromY = fromY
         self.toX = toX
         self.toY = toY
+        self.anim = None
 
     def start(self):
         super(MoveCardTask, self).start()
 
-        self.card.drawCard(self.drawingArea)
+        # self.card.drawCard(self.drawingArea) - simpler setup:
+        self.card.setTop(self.drawingArea)
+
         xf = self.fromX
         yf = self.drawingArea.size[1] - self.fromY - self.card.rect.height
         xt = self.toX
@@ -850,15 +879,15 @@ class MoveCardTask(Task):
         self.card.cardIsMoving = True
 
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_out_quad')
-        anim = Animation(x=xt, y=yt, duration=0.30, t='in_out_expo')
+        self.anim = Animation(x=xt, y=yt, duration=0.40, t='in_out_expo')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_quad')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='out_back')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_bounce')
         #anim = Animation(x=xt,y=yt,duration=0.17,t='in_expo')
         #anim = Animation(x=xt,y=yt,duration=0.2,t='out_expo')
         if (self.card.cardImage != None):
-            anim.bind(on_complete=self.animEnd)
-            anim.start(self.card.cardImage)
+            self.anim.bind(on_complete=self.animEnd)
+            self.anim.start(self.card.cardImage)
             # print ('start anim:')
             # self.card.printCard()
         else:
@@ -866,6 +895,7 @@ class MoveCardTask(Task):
 
     def animEnd(self, instance, value):
         self.stop()
+        self.anim = None
         self.card.cardIsMoving = False
 
 class FreeCell(LStreamIOHolder):
@@ -950,14 +980,14 @@ class FreeCell(LStreamIOHolder):
 
         # Set up the "free cells" (4 cells in top left of screen)
         self.freecellStacks = [
-            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0, FREECELL_TYPE)
             for i in range(NUMFREECELLS)
         ]
         self.freeCellsRect = None
 
         # Set up the "aces" (4 cells in top right of screen); order is important!
         self.acesStacks = [
-            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0, ACE_TYPE)
             for i in range(NUMACES)
         ]
         self.acesRect = None
@@ -965,7 +995,7 @@ class FreeCell(LStreamIOHolder):
         # Set up the columns
         self.mainCardStacks = [
             CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1,
-                      self.cardHeight // 5) for i in range(NUMCOLUMNS)
+                      self.cardHeight // 5, REGULAR_TYPE) for i in range(NUMCOLUMNS)
         ]
         self.mainCardsRects = None
 
@@ -977,6 +1007,9 @@ class FreeCell(LStreamIOHolder):
 
         # Initial Moves as member
         self.moves = []
+
+        # Initial redos as member
+        self.redos = []
 
         # Default to manual play mode
         self.smartPlayMode = False
@@ -994,71 +1027,85 @@ class FreeCell(LStreamIOHolder):
         grey0 = 'icons/grey1.jpg'
         grey1 = 'icons/grey2.jpg'
         grey2 = 'icons/grey4.jpg'
+        grey3 = 'icons/grey0.jpg'
+        nongrey = 'icons/gnome-freecell48.png'
 
         # Knöpfe am rechten Rand.
 
-        self.undo = Button(text='Undo', background_normal=grey0)
+        self.undo = ImageButton(source="icons/go-previous.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        #self.undo = Button(text='Undo', background_normal=grey0)
+        #self.undo = Button(text='Undo', background_normal=nongrey)
         self.undo.bind(on_press=self.undo_move_cb)
 
-        self.redo = Button(text='Redo', background_normal=grey1)
+        self.redo = ImageButton(source="icons/go-next.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        #self.redo = Button(text='Redo', background_normal=grey1)
         self.redo.bind(on_press=self.redo_move_cb)
-        self.redo.size_hint = (1.0,0.4)
 
-        self.automove = Button(text='Auto', background_normal=grey2)
+        self.automove = ImageButton(source="icons/go-last.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        #self.automove = Button(text='Auto', background_normal=grey2)
         self.automove.bind(on_press=self.auto_move_cb)
 
-        self.menu = ButtonColm()
-        self.menu.add_widget(self.undo)
-        self.menu.add_widget(self.redo)
-        self.menu.add_widget(self.automove)
+        self.itest = ImageButton(source="icons/go-menu.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        #self.itest = ImageButton(source="icons/freecell4maemo.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        self.itest.bind(on_press=self.menu2_cb)
 
-        # Menubar
+        self.menu = ActionLine()
+        self.menu.addButton(self.itest, 1.0)
+        self.menu.addButton(self.undo, 2.5)
+        self.menu.addButton(self.redo, 1.0)
+        self.menu.addButton(self.automove, 2.5)
 
-        self.header = menubar()
-        self.hmenu = menu(
-            False,
-            app_icon='icons/gnome-freecell48.png',
-            text='Freecell for Maemo on Android',
-            background_image=grey0)
-        self.header.setMenu(self.hmenu)
+        # App Header Bar
 
-        #self.done = menuButton(
-        #    self.hmenu, text='Exit', command=self.exit_menu_cb)
-        self.restartgame = menuButton(
-            self.hmenu, text='Restart', command=self.restart_game_menu_cb)
-        self.newgame = menuButton(
-            self.hmenu, text='New', command=self.new_game_menu_cb)
-        self.about = menuButton(
-            self.hmenu, text='About', command=self.about_menu_show)
-        #self.reloadgame = menuButton(
-        #    self.hmenu, text='Reload', command=self.reload_game)
+        self.icon = ImageButton(source="icons/gnome-freecell48.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        self.icon.bind(on_press=self.about_menu_show)
+        self.space = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
+        self.header = ActionLine()
+        self.header.invertOrder = False
+        self.header.addButton(self.icon, 1.0)
+        self.header.addButton(self.space, 6.0)
+
+        # Settings widget (eigentlich 2. Menu ebene).
+
+        self.restartgame = ImageButton(source="icons/reset-game.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        #self.restartgame = Button(text='Restart')
+        self.restartgame.bind(on_press=self.restart_game_menu_cb)
+
+        self.newgame = ImageButton(source="icons/new-game.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        #self.newgame = Button(text='New')
+        self.newgame.bind(on_press=self.new_game_menu_cb)
+        
+        self.autofirst = ImageButton(source="icons/go-first.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        #self.automove = Button(text='Auto', background_normal=grey2)
+        self.autofirst.bind(on_press=self.auto_undo_cb)
+
+        '''
+        self.about = ImageButton(source="icons/about2.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        #self.about = ImageButton(source="icons/about1.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        #self.about = Button(text='About')
+        self.about.bind(on_press=self.about_menu_show)
+        '''
         self.aboutBox = None
+
+        self.menu2 = ActionLine()
+        self.menu2.addButton(ImageButton(source="icons/go-menu.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1)),1)
+        self.menu2.addButton(self.newgame, 2.0)
+        self.menu2.addButton(self.restartgame, 2.0)
+        self.menu2.addButton(self.autofirst, 2.0)
+        #self.menu2.addButton(self.about, 1.0)
 
         self.read_settings()
 
         # Main part of window is a DrawingArea
 
         self.drawingArea = PlayGround()
-        self.mainWindow = MainWindow()
-        self.widgetLine = ButtonLine()
-
-        # (Randsicherung)
-        # self.mainWindow.add_widget(Button(size_hint=(1.0, 0.01)))
-
-        self.widgetLine.size_hint = (1.0, 1.0)
-        self.mainWindow.add_widget(self.header)
-        self.mainWindow.add_widget(self.widgetLine)
-
-        self.drawingArea.size_hint = (0.9, 1.0)
-        self.menu.size_hint = (0.1, 1.0)
-        self.widgetLine.add_widget(self.drawingArea)
-        self.widgetLine.add_widget(self.menu)
+        self.widgetLine = ProgramArea(self.header,self.drawingArea,self.menu,0.09)
+        self.mainWindow = MainWindow(self.widgetLine)
 
         self.drawingArea.bind(lastHitPos=self.drawingAreaClick)
         self.drawingArea.bind(size=self.configure_event_cb)
 
         Window.bind(on_keyboard=self.key_input)
-        #Window.bind(on_resize=self.configure_event_resize)
 
         # Track the currently selected card
         self.selectedCardRect = Rect()
@@ -1068,6 +1115,21 @@ class FreeCell(LStreamIOHolder):
         self.debugMode = False
 
         #self.initMoves()
+
+    # experimentell (WIP)
+    def menu2_cb(self,widget):
+        print ('menu2_cb')
+
+        # Widget installieren.
+        self.widgetLine.pushAction(self.menu2,0.09)
+
+        # Widget close vorbereiten (popAction an on_press binden)
+
+        def close_cb(a,b):
+            self.widgetLine.popAction()
+
+        #self.menu2.header.bind(on_press=close_cb)
+        self.menu2.bind(on_touch_down=close_cb)
 
     def initMoves(self):
         # jkq
@@ -1079,6 +1141,14 @@ class FreeCell(LStreamIOHolder):
                 dst_stack = self.retrieve_stack(dst[0])
                 self.moveCardOld(src_stack[src[1]], dst_stack[dst[1]])
         self.moves = []
+
+        if len(self.redos) > 0:
+            for (src, dst) in self.redos:
+                logging.debug('FreeCell: initial redo: %s, %s' % (src, dst))
+                src_stack = self.retrieve_stack(src[0])
+                dst_stack = self.retrieve_stack(dst[0])
+                self.redoStack.append((src_stack[src[1]],dst_stack[dst[1]]))
+        self.redos = []
 
     def compare_stack(self, stack):
         for s in range(NUMFREECELLS):
@@ -1118,10 +1188,17 @@ class FreeCell(LStreamIOHolder):
             move = (self.compare_stack(src), self.compare_stack(dst))
             moves.append(move)
 
+        redos = []
+        for (src, dst) in self.redoStack:
+            redo = (self.compare_stack(src), self.compare_stack(dst))
+            redos.append(redo)
+
         # logging.info('FreeCell: save %s' % self.startCardOrder)
         # logging.info('FreeCell: save %s' % moves)
+        # logging.info('FreeCell: save %s' % redos)
 
         self.store.setEntry('moves',moves)
+        self.store.setEntry('redos',redos)
         self.store.setEntry('deal',self.startCardOrder)
         self.store.store()
 
@@ -1130,12 +1207,17 @@ class FreeCell(LStreamIOHolder):
 
     def read_current_game(self):
         self.store.load()
-        self.moves = self.store.getEntry('moves')
-        if self.moves is None:
-            return False
+
         self.startCardOrder = self.store.getEntry('deal')
         if self.startCardOrder is None:
             return False
+        self.moves = self.store.getEntry('moves')
+        if self.moves is None:
+            self.moves = []
+        self.redos = self.store.getEntry('redos')
+        if self.redos is None:
+            self.redos = []
+
         # ev. weitere Konsistenztests. Notwendig wenn wir es
         # zulassen, das gespeicherte Spiele geladen werden.
         return True
@@ -1156,15 +1238,23 @@ class FreeCell(LStreamIOHolder):
         self.save_game()
         stopTouchApp()
 
+    def auto_undo_cb(self,widget):
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
+        self.clearCardSelection()
+        while len(self.undoStack) > 0:
+            srcStack, dstStack = self.undoStack[-1]
+            self.moveCard(dstStack, srcStack)
+
     def reload_game(self, widget):
         logging.info('FreeCell: reload_game (start)')
         self.undoStack = []
         self.acesStacks = [
-            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0, ACE_TYPE)
             for i in range(NUMACES)
         ]
         self.freecellStacks = [
-            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0, FREECELL_TYPE)
             for i in range(NUMFREECELLS)
         ]
         newgame = not self.read_current_game()
@@ -1175,15 +1265,17 @@ class FreeCell(LStreamIOHolder):
         logging.info('FreeCell: reload_game (ended)')
 
     def restart_game_menu_cb(self, widget):
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
         logging.info('FreeCell: restart_game_menu_cb')
         self.undoStack = []
         self.redoStack = []
         self.acesStacks = [
-            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0, ACE_TYPE)
             for i in range(NUMACES)
         ]
         self.freecellStacks = [
-            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0, FREECELL_TYPE)
             for i in range(NUMFREECELLS)
         ]
         self.setupCards(False)
@@ -1191,14 +1283,16 @@ class FreeCell(LStreamIOHolder):
         self.redrawOffscreen()
 
     def new_game_menu_cb(self, widget):
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
         self.undoStack = []
         self.redoStack = []
         self.acesStacks = [
-            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0)
+            CardStack(0, 0, self.cardPixbufs[CLUBS_BACK + i], i, 0, ACE_TYPE)
             for i in range(NUMACES)
         ]
         self.freecellStacks = [
-            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0)
+            CardStack(0, 0, self.cardPixbufs[BLANK_BACK], -1, 0, FREECELL_TYPE)
             for i in range(NUMFREECELLS)
         ]
         self.setupCards()
@@ -1279,14 +1373,19 @@ class FreeCell(LStreamIOHolder):
         self.redoMove()
 
     def auto_move_cb(self, widget):
-        logging.info('FreeCell: auto_move_cb')
-        #gobject.timeout_add(500, self.auto_move_wrapper)
-        #Clock.schedule_once(self.auto_move_wrapper, 0.1)
-        self.autoMoveCardsHome()
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
 
-    def auto_move_wrapper(self, dst):
+        logging.info('FreeCell: auto_move_cb')
+
+        # zuerst redo stack abarbeiten
+        self.clearCardSelection()
+        while len(self.redoStack) > 0:
+            srcStack, dstStack = self.redoStack[-1]
+            self.moveCard(dstStack, srcStack)
+
+        # move home soweit es geht
         self.autoMoveCardsHome()
-        return False
 
     def autoMoveCardsHome(self):
         # Move cards to the ace stacks, where possible
@@ -1358,6 +1457,7 @@ class FreeCell(LStreamIOHolder):
             random.SystemRandom().shuffle(cards)
             self.startCardOrder = cards
             self.moves = []
+            self.redos = []
 
             # LStoreDb('').show(cards)
         else:
@@ -1450,7 +1550,7 @@ class FreeCell(LStreamIOHolder):
     def configure_event_cb(self, widget, event):
         # Handle the window configuration event at startup or when changing to/from fullscreen
 
-        logging.info("FreeCell: configure_event_cb %s" % widget)
+        # logging.info("FreeCell: configure_event_cb %s" % widget)
 
         # Allocate a Pixbuf to serve as the offscreen buffer for drawing of the game board
 
@@ -1469,12 +1569,9 @@ class FreeCell(LStreamIOHolder):
         self.windowWidth = width
         self.windowHeight = height
 
-        logging.info(
-            "configure_event_cb: self.windowWidth = %d, self.windowHeight = %d"
-            % (self.windowWidth, self.windowHeight))
-        logging.debug(
-            "configure_event_cb: self.windowWidth = %d, self.windowHeight = %d"
-            % (self.windowWidth, self.windowHeight))
+        #logging.debug(
+        #    "configure_event_cb: self.windowWidth = %d, self.windowHeight = %d"
+        #    % (self.windowWidth, self.windowHeight))
 
         # Resize has occurred, so set new card rects
         self.setCardRects()
@@ -1499,7 +1596,7 @@ class FreeCell(LStreamIOHolder):
             self.selectedCardType = stackType
             self.selectedCardStack = cardStack
             cardVal, suit, colour = cardStack.getCardValueSuitColour(-1)
-            logging.debug("cardSelection: top card is: %s",cardnum_to_sym(cardVal+suit*CARDS_PER_SUIT))
+            logging.debug("cardSelection: top card is: %s",cardnum_to_txt(cardVal+suit*CARDS_PER_SUIT))
         else:
             logging.debug("cardSelection: stack is empty")
 
@@ -1522,8 +1619,10 @@ class FreeCell(LStreamIOHolder):
         dstNumCards = dstStack.getNumCards()
         
         if dstNumCards == 0:
-            logging.info("moveCard: move %s %s to empty stack" %
-                     (SUITNAMES[srcSuit], CARDNAMES[srcCardVal]))
+            stackType = dstStack.stackType()
+
+            logging.info("moveCard: move %s %s to %s" %
+                     (SUITNAMES[srcSuit], CARDNAMES[srcCardVal], STACK_TYPE[stackType]))
         else:
             logging.info("moveCard: move %s %s to %s %s" %
                      (SUITNAMES[srcSuit], CARDNAMES[srcCardVal],
@@ -1573,8 +1672,10 @@ class FreeCell(LStreamIOHolder):
         dstStack.pushCard(card)
 
         # Visualisierung vorbereiten:
-        mt = MoveCardTask('MoveCardTask', self.drawingArea, card, fromX, fromY,
+        name = cardnum_to_sym(card.cardNum)
+        mt = MoveCardTask(name, self.drawingArea, card, fromX, fromY,
                           toX, toY)
+
         self.taskQ.taskInsert(mt)
 
     #-----------------------------------------------------
@@ -1701,9 +1802,9 @@ class FreeCell(LStreamIOHolder):
             dstSrcDelta = dstCardVal - srcCardVal
 
             logging.debug(
-                "srcCard = %s, srcNumCards = %d" % (cardnum_to_sym(srcCardVal+srcSuit*CARDS_PER_SUIT), srcNumCards))
+                "srcCard = %s, srcNumCards = %d" % (cardnum_to_txt(srcCardVal+srcSuit*CARDS_PER_SUIT), srcNumCards))
             logging.debug(
-                "dstCard = %s, dstNumCards = %d, dstSrcDelta = %d" % (cardnum_to_sym(dstCardVal+dstSuit*CARDS_PER_SUIT), dstNumCards, dstSrcDelta))
+                "dstCard = %s, dstNumCards = %d, dstSrcDelta = %d" % (cardnum_to_txt(dstCardVal+dstSuit*CARDS_PER_SUIT), dstNumCards, dstSrcDelta))
 
             numFreeCells = 0
             for cardStack in self.freecellStacks:
@@ -1716,8 +1817,8 @@ class FreeCell(LStreamIOHolder):
                     srcNumCards - i - 1)
 
                 logging.debug(
-                    "card #%d: cardSym = %s"
-                    % (srcNumCards - i - 1, cardnum_to_sym(cardVal+cardSuit*CARDS_PER_SUIT)))
+                    "card #%d = %s"
+                    % (srcNumCards - i - 1, cardnum_to_txt(cardVal+cardSuit*CARDS_PER_SUIT)))
 
                 if (cardVal == srcCardVal + i
                         and cardSuitColour == (srcSuitColour + i) % 2):
@@ -1832,6 +1933,9 @@ class FreeCellApp(App):
             # Solches zeug zu testen wird nun also wirklich überaus
             # mühselig! - geht womöglich nur auf einem Android 11 gerät.
             pass
+
+            # aber sowieso: wir wollen den Benutzer gar nicht auffordern das zu
+            # aktivieren. War nur ein Testversuch.
     '''
 
     def windowUpdate(self,dt):
