@@ -1033,20 +1033,15 @@ class FreeCell(LStreamIOHolder):
         # Knöpfe am rechten Rand.
 
         self.undo = ImageButton(source="icons/go-previous.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.undo = Button(text='Undo', background_normal=grey0)
-        #self.undo = Button(text='Undo', background_normal=nongrey)
         self.undo.bind(on_press=self.undo_move_cb)
 
         self.redo = ImageButton(source="icons/go-next.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
-        #self.redo = Button(text='Redo', background_normal=grey1)
         self.redo.bind(on_press=self.redo_move_cb)
 
-        self.automove = ImageButton(source="icons/go-last.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.automove = Button(text='Auto', background_normal=grey2)
+        self.automove = ImageButton(source="icons/auto-move.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
         self.automove.bind(on_press=self.auto_move_cb)
 
         self.itest = ImageButton(source="icons/go-menu.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
-        #self.itest = ImageButton(source="icons/freecell4maemo.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
         self.itest.bind(on_press=self.menu2_cb)
 
         self.menu = ActionLine()
@@ -1059,6 +1054,7 @@ class FreeCell(LStreamIOHolder):
 
         self.icon = ImageButton(source="icons/gnome-freecell48.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
         self.icon.bind(on_press=self.about_menu_show)
+        self.aboutBox = None
         self.space = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
         self.header = ActionLine()
         self.header.invertOrder = False
@@ -1068,31 +1064,24 @@ class FreeCell(LStreamIOHolder):
         # Settings widget (eigentlich 2. Menu ebene).
 
         self.restartgame = ImageButton(source="icons/reset-game.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
-        #self.restartgame = Button(text='Restart')
         self.restartgame.bind(on_press=self.restart_game_menu_cb)
 
         self.newgame = ImageButton(source="icons/new-game.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.newgame = Button(text='New')
         self.newgame.bind(on_press=self.new_game_menu_cb)
         
         self.autofirst = ImageButton(source="icons/go-first.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.automove = Button(text='Auto', background_normal=grey2)
         self.autofirst.bind(on_press=self.auto_undo_cb)
 
-        '''
-        self.about = ImageButton(source="icons/about2.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
-        #self.about = ImageButton(source="icons/about1.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
-        #self.about = Button(text='About')
-        self.about.bind(on_press=self.about_menu_show)
-        '''
-        self.aboutBox = None
+        self.autolast = ImageButton(source="icons/go-last.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        self.autolast.bind(on_press=self.auto_redo_cb)
 
         self.menu2 = ActionLine()
         self.menu2.addButton(ImageButton(source="icons/go-menu.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1)),1)
-        self.menu2.addButton(self.newgame, 2.0)
-        self.menu2.addButton(self.restartgame, 2.0)
-        self.menu2.addButton(self.autofirst, 2.0)
-        #self.menu2.addButton(self.about, 1.0)
+        self.menu2.addButton(self.newgame, 1.5)
+        self.menu2.addButton(self.restartgame, 1.5)
+        self.menu2.addButton(self.autofirst, 1.5)
+        self.menu2.addButton(self.autolast, 1.5)
+
 
         self.read_settings()
 
@@ -1116,19 +1105,18 @@ class FreeCell(LStreamIOHolder):
 
         #self.initMoves()
 
-    # experimentell (WIP)
     def menu2_cb(self,widget):
         print ('menu2_cb')
 
-        # Widget installieren.
-        self.widgetLine.pushAction(self.menu2,0.09)
-
-        # Widget close vorbereiten (popAction an on_press binden)
+        # Das menu wird mit pushAction installiert und ersetzt dann
+        # das Hauptmenu und mit popAction wird es wieder entfernt (und
+        # das Hauptmenu restauriert).
 
         def close_cb(a,b):
             self.widgetLine.popAction()
 
-        #self.menu2.header.bind(on_press=close_cb)
+        # Widget installieren und an callback binden.
+        self.widgetLine.pushAction(self.menu2,0.09)
         self.menu2.bind(on_touch_down=close_cb)
 
     def initMoves(self):
@@ -1372,19 +1360,23 @@ class FreeCell(LStreamIOHolder):
     def redo_move_cb(self, widget):
         self.redoMove()
 
-    def auto_move_cb(self, widget):
+    def auto_redo_cb(self, widget):
         if not (self.taskQ.taskQsAreEmpty()):
             return
 
-        logging.info('FreeCell: auto_move_cb')
-
-        # zuerst redo stack abarbeiten
+        logging.info('FreeCell: auto_redo_cb')
         self.clearCardSelection()
         while len(self.redoStack) > 0:
             srcStack, dstStack = self.redoStack[-1]
             self.moveCard(dstStack, srcStack)
 
-        # move home soweit es geht
+
+    def auto_move_cb(self, widget):
+        if not (self.taskQ.taskQsAreEmpty()):
+            return
+
+        logging.info('FreeCell: auto_move_cb')
+        self.clearCardSelection()
         self.autoMoveCardsHome()
 
     def autoMoveCardsHome(self):
@@ -1779,8 +1771,8 @@ class FreeCell(LStreamIOHolder):
 
         elif (self.selectedCardType == None):
 
-            if not (self.taskQ.taskQsAreEmpty()):
-                return True
+            #if not (self.taskQ.taskQsAreEmpty()):
+            #    return True
 
             # There was no previous selection, so try
             self.setCardSelection(dstType, dstStack, dstRect, x, y)
