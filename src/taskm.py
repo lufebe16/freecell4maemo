@@ -27,6 +27,7 @@ class Task(EventDispatcher):
         super(Task, self).__init__()
         self.done = False
         self.name = name
+        self.delay = 0.01
 
     def start(self):
         #print ('start of ',self.name)
@@ -52,8 +53,7 @@ class TaskQ(EventDispatcher):
         self.runQ = []
         self.runQlen = 0
         self.runQmax = 52
-        # e.g.
-        self.runSeq = 0.08  # e.g.
+        self.runSeq = 0.01  # default delay.
 
     def scheduleNext(self, dt):
         if (self.waitQlen > 0):
@@ -66,8 +66,12 @@ class TaskQ(EventDispatcher):
                     self.runQ.append(self.waitQ[0])
                     del self.waitQ[0]
 
+        delay = self.runSeq
+        if self.waitQlen > 0:
+            delay = self.waitQ[0].delay
+
         if (self.waitQlen > 0 or self.runQlen > 0):
-            Clock.schedule_once(self.scheduleNext, self.runSeq)
+            Clock.schedule_once(self.scheduleNext, delay)
 
     def on_runQ(self, instance, value):
         lastlen = self.runQlen

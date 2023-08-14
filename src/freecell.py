@@ -863,6 +863,15 @@ class MoveCardTask(Task):
         self.toX = toX
         self.toY = toY
         self.anim = None
+        self.delay = 0.05           # start delay [s]
+        self.duration = 0.30        # duration [s]
+        #self.tf = 'in_out_expo'    # transfer function
+        self.tf = 'in_out_quad'
+        #self.tf = 'out_quad'
+        #self.tf = 'out_back'
+        #self.tf = 'in_bounce'
+        #self.tf = 'in_expo'
+        #self.tf = 'out_expo'
 
     def start(self):
         super(MoveCardTask, self).start()
@@ -878,13 +887,7 @@ class MoveCardTask(Task):
         self.card.cardImage.pos = (xf, yf)
         self.card.cardIsMoving = True
 
-        #anim = Animation(x=xt,y=yt,duration=0.17,t='in_out_quad')
-        self.anim = Animation(x=xt, y=yt, duration=0.40, t='in_out_expo')
-        #anim = Animation(x=xt,y=yt,duration=0.17,t='out_quad')
-        #anim = Animation(x=xt,y=yt,duration=0.17,t='out_back')
-        #anim = Animation(x=xt,y=yt,duration=0.17,t='in_bounce')
-        #anim = Animation(x=xt,y=yt,duration=0.17,t='in_expo')
-        #anim = Animation(x=xt,y=yt,duration=0.2,t='out_expo')
+        self.anim = Animation(x=xt, y=yt, d=self.duration, t=self.tf)
         if (self.card.cardImage != None):
             self.anim.bind(on_complete=self.animEnd)
             self.anim.start(self.card.cardImage)

@@ -1,0 +1,20 @@
+{
+  "version": 3,
+  "artifactType": {
+    "type": "APK",
+    "kind": "Directory"
+  },
+  "applicationId": "org.lufebe16.freecell",
+  "variantName": "release",
+  "elements": [
+    {
+      "type": "SINGLE",
+      "filters": [],
+      "attributes": [],
+      "versionCode": 1021109,
+      "versionName": "1.9",
+      "outputFile": "freecell-release.apk"
+    }
+  ],
+  "elementType": "File"
+}

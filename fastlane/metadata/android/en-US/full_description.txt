@@ -1,0 +1,9 @@
+FreecellOfMaemo is a patience card game.
+
+It is a port of the FreeCell4Maemo card game from the Nokia N900
+smartphone.
+
+...
+
+The app creates new games by a random generator. It is thereof possible
+to generate also unsolvable card deals. (But these are very seldom).
