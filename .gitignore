@@ -6,11 +6,9 @@ syntax: glob
 .freecell4maemo/*
 .git/*
 .buildozer/*
-android/bin/*
-android/tmp/*
-android/*.apk
 *.sublime*
 mk
+mkenv
 ENV
 ENV*/*
 ARM*/*

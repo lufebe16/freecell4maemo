@@ -18,6 +18,7 @@
 from kivy.uix.image import *
 from kivy.uix.boxlayout import *
 from kivy.uix.relativelayout import *
+from kivy.uix.stacklayout import StackLayout
 from kivy.uix.floatlayout import *
 from kivy.graphics import *
 from kivy.properties import *
@@ -143,12 +144,25 @@ class ImageButton(ButtonBehavior, Image):
         super(ImageButton, self).__init__(**kw)
         self.bind(size=self.update_rect, pos=self.update_rect)
         with self.canvas.before:
-            Color(bkgnd[0],bkgnd[1],bkgnd[2],bkgnd[3])  # gruen wie ein Spieltisch sollte das sein.
+            Color(bkgnd[0],bkgnd[1],bkgnd[2],bkgnd[3])
             self.rect = Rectangle(size=self.size, pos=self.pos)
 
     def update_rect(self, instance, value):
         self.rect.pos = instance.pos
         self.rect.size = instance.size
+
+    def on_press(self):
+        print ('on_press')
+        #print ('on_press',widget)
+        pass
+
+    def on_touch_down(self, touch):
+        super().on_touch_down(touch)
+        pass
+
+    def on_touch_up(self, touch):
+        super().on_touch_up(touch)
+        pass
 
 
 # -----------------------------------------
@@ -222,10 +236,20 @@ class SettingsPage(BoxLayout):
 
 class PlayGround(RelativeLayout):
     lastHitPos = ListProperty([])
+    longPress = NumericProperty(0)
 
     def __init__(self):
         super(PlayGround, self).__init__()
         self.lastHitPos = []
+        self.statuspanel = StackLayout(orientation='lr-bt')
+
+        self.add_widget(self.statuspanel)
+        if kivy.__version__ < "2.2.1":
+            self.lock = Image(source="icons/padlock.png",size_hint=(0.12, 0.12))
+            self.lock.allow_stretch = True
+            self.lock.keep_ratio = True
+        else:
+            self.lock = Image(source="icons/padlock.png",size_hint=(0.12, 0.12),fit_mode="contain")
 
     def on_lastHitPos(self, instance, value):
         #print ('lastHitPos',value)
@@ -241,6 +265,29 @@ class PlayGround(RelativeLayout):
             # print('touch down event - ',touch.profile,touch.pos,self.lastHitPos)
 
         return super(PlayGround, self).on_touch_down(touch)
+
+    def on_touch_up(self,touch):
+        if self.collide_point(touch.x,touch.y):
+            if (touch.time_end-touch.time_start) > 0.6:
+                self.longPress = touch.time_end
+
+        return super().on_touch_up(touch)
+
+    def on_longPress(self, instance, timestamp):
+        print('longPressed at {time}'.format(time=timestamp))
+
+    def refreshStatus(self):
+        self.remove_widget(self.statuspanel)
+        self.add_widget(self.statuspanel)
+
+    def setLockIcon(self, on = True):
+        if on:
+            self.statuspanel.add_widget(self.lock)
+            print ('set Lock Icon')
+        else:
+            self.statuspanel.remove_widget(self.lock)
+            print ('remove Lock Icon')
+        self.refreshStatus()
 
     def on_pos(self, instance, value):
         #print ('pos changed',value)
@@ -400,21 +447,34 @@ class MainWindow(BoxLayout):
                 #Window.borderless = False
                 #Window.resizable = True
 
+    '''
     def on_touch_down(self,touch):
         ret = False
         if touch.is_double_tap:
-          print('Touch is a double tap !')
-          print(' - interval is',touch.double_tap_time)
-          print(' - distance between previous is',touch.double_tap_distance)
-          self.full = not self.full
-          Clock.schedule_once(self._fs, 0.1)
+            print('Touch is a double tap !')
+            print(' - interval is',touch.double_tap_time)
+            print(' - distance between previous is',touch.double_tap_distance)
+            self.full = not self.full
+            #Clock.schedule_once(self._fs, 0.1)
         else:
-          for c in self.children:
-            ret = c.on_touch_down(touch)
-            if ret:
-                break
+            for c in self.children:
+                ret = c.on_touch_down(touch)
+                if ret:
+                    break
+            return ret
+
+    '''
+    def on_touch_up(self,touch):
+        pass
+        print('Touch up !')
+        for c in self.children:
+            ret = c.on_touch_up(touch)
+
+        if self.collide_point(touch.x,touch.y):
+            print ('on_touch_up Layout')
+            if (touch.time_end-touch.time_start) > 0.5:
+                print ('on_touch_up Layout - long press')
+                return True
+
         return ret
     '''
-
-
-

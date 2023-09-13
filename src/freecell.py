@@ -91,6 +91,7 @@ import sys
 
 from base import LBase, LStreamIOHolder
 from saf import SaF
+from androidori import AndroidOri
 
 # storage dir.
 STORAGESUBDIR = ".freecell4maemo"
@@ -1038,10 +1039,10 @@ class FreeCell(LStreamIOHolder):
         self.undo = ImageButton(source="icons/go-previous.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
         self.undo.bind(on_press=self.undo_move_cb)
 
-        self.redo = ImageButton(source="icons/go-next.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
+        self.redo = ImageButton(source="icons/go-next.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
         self.redo.bind(on_press=self.redo_move_cb)
 
-        self.automove = ImageButton(source="icons/auto-move.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        self.automove = ImageButton(source="icons/auto-move.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
         self.automove.bind(on_press=self.auto_move_cb)
 
         self.itest = ImageButton(source="icons/go-menu.png",fit_mode="contain",bkgnd=(0.35,0.4,0.4,1))
@@ -1050,8 +1051,8 @@ class FreeCell(LStreamIOHolder):
         self.menu = ActionLine()
         self.menu.addButton(self.itest, 1.0)
         self.menu.addButton(self.undo, 2.5)
-        self.menu.addButton(self.redo, 1.0)
         self.menu.addButton(self.automove, 2.5)
+        self.menu.addButton(self.redo, 1.0)
 
         # App Header Bar
 
@@ -1059,10 +1060,15 @@ class FreeCell(LStreamIOHolder):
         self.icon.bind(on_press=self.about_menu_show)
         self.aboutBox = None
         self.space = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
+
+        #self.testbutton = ImageButton(source="icons/about.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        #self.testbutton.bind(on_press=self.orientation_freeze_toggle)
+
         self.header = ActionLine()
         self.header.invertOrder = False
         self.header.addButton(self.icon, 1.0)
         self.header.addButton(self.space, 6.0)
+        #self.header.addButton(self.testbutton, 1.0)
 
         # Settings widget (eigentlich 2. Menu ebene).
 
@@ -1096,6 +1102,7 @@ class FreeCell(LStreamIOHolder):
 
         self.drawingArea.bind(lastHitPos=self.drawingAreaClick)
         self.drawingArea.bind(size=self.configure_event_cb)
+        self.drawingArea.bind(longPress=self.orientation_freeze_toggle)
 
         Window.bind(on_keyboard=self.key_input)
 
@@ -1105,8 +1112,26 @@ class FreeCell(LStreamIOHolder):
         self.selectedCardType = None
 
         self.debugMode = False
+        self.orientationIsLocked = False
 
         #self.initMoves()
+
+    def orientation_freeze_toggle(self, *args):
+        if self.orientationIsLocked:
+            AndroidOri().unLockOrientation()
+            self.orientationIsLocked = False
+        else:
+            AndroidOri().lockOrientation()
+            self.orientationIsLocked = True
+
+        self.drawingArea.setLockIcon(self.orientationIsLocked)
+        print ('freeze_ori')
+
+    def orientation_freeze_reset(self):
+        AndroidOri().unLockOrientation()
+        self.orientationIsLocked = False
+        self.drawingArea.setLockIcon(False)
+
 
     def menu2_cb(self,widget):
         print ('menu2_cb')
@@ -1532,6 +1557,8 @@ class FreeCell(LStreamIOHolder):
 
         for cardStack in self.mainCardStacks:
             cardStack.drawStack(self.drawingArea)
+
+        self.drawingArea.refreshStatus()
     '''
     def configure_event_resize(self, widget, width, height):
         logging.info("FreeCell: configure_event_resize %s" % widget)
@@ -1971,6 +1998,7 @@ class FreeCellApp(App):
 
     def on_resume(self):
         logging.info("FreeCellApp: on_resume")
+        self.freeCell.orientation_freeze_reset()
         pass
 
     def build(self):
