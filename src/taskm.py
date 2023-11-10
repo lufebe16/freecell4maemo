@@ -15,10 +15,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from kivy.properties import BooleanProperty, ListProperty
 from kivy._event import EventDispatcher
 from kivy.clock import Clock
-
+from kivy.properties import BooleanProperty, ListProperty
 
 class Task(EventDispatcher):
     done = BooleanProperty(False)
@@ -40,7 +39,6 @@ class Task(EventDispatcher):
     def on_done(self, instance, value):
         #print ('on_done',instance,value)
         pass
-
 
 class TaskQ(EventDispatcher):
     waitQ = ListProperty([])
@@ -82,7 +80,6 @@ class TaskQ(EventDispatcher):
             self.runQ[-1].start()
 
     def on_waitQ(self, instance, value):
-        lastlen = self.waitQlen
         self.waitQlen = len(self.waitQ)
         if (self.waitQlen > 0 and self.runQlen == 0):
             self.scheduleNext(0)

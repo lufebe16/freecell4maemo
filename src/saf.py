@@ -1,4 +1,5 @@
 # skizze:
+# flake8: noqa
 
 import logging
 try:

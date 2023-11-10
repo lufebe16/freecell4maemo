@@ -1062,12 +1062,13 @@ class FreeCell(LStreamIOHolder):
         self.space = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
 
         #self.testbutton = ImageButton(source="icons/about.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.testbutton.bind(on_press=self.orientation_freeze_toggle)
+        #self.testbutton.bind(on_press=self.test_toast)
 
         self.header = ActionLine()
         self.header.invertOrder = False
         self.header.addButton(self.icon, 1.0)
         self.header.addButton(self.space, 6.0)
+        #self.header.addButton(self.space, 5.0)
         #self.header.addButton(self.testbutton, 1.0)
 
         # Settings widget (eigentlich 2. Menu ebene).
@@ -1102,7 +1103,7 @@ class FreeCell(LStreamIOHolder):
 
         self.drawingArea.bind(lastHitPos=self.drawingAreaClick)
         self.drawingArea.bind(size=self.configure_event_cb)
-        self.drawingArea.bind(longPress=self.orientation_freeze_toggle)
+        self.drawingArea.bind(longPress=self.orientation_freeze)
 
         Window.bind(on_keyboard=self.key_input)
 
@@ -1116,22 +1117,27 @@ class FreeCell(LStreamIOHolder):
 
         #self.initMoves()
 
-    def orientation_freeze_toggle(self, *args):
-        if self.orientationIsLocked:
-            AndroidOri().unLockOrientation()
-            self.orientationIsLocked = False
-        else:
+    '''
+    def test_toast(self, *args):
+        from toast import Toast
+
+        label = Toast(text="This is a test for my Toast implementation")
+        label.show(parent=self.drawingArea,duration=2.5,offset=(0,-0.15))
+        #label.popup(parent=self.drawingArea,offset=(0,-0.15))
+        print ('after toast')
+        '''
+
+    def orientation_freeze(self, *args):
+        if not self.orientationIsLocked:
             AndroidOri().lockOrientation()
             self.orientationIsLocked = True
-
-        self.drawingArea.setLockIcon(self.orientationIsLocked)
+            self.drawingArea.setLockIcon(self.orientationIsLocked)
         print ('freeze_ori')
 
     def orientation_freeze_reset(self):
         AndroidOri().unLockOrientation()
         self.orientationIsLocked = False
         self.drawingArea.setLockIcon(False)
-
 
     def menu2_cb(self,widget):
         print ('menu2_cb')

@@ -256,6 +256,8 @@ class PlayGround(RelativeLayout):
         pass
 
     def on_touch_down(self, touch):
+        if super(PlayGround, self).on_touch_down(touch):
+            return True
         if self.collide_point(*touch.pos):
             # Achtung die Korrdinaten sind screen koordinaten !!
             tx = touch.px - self.pos[0]
@@ -263,15 +265,17 @@ class PlayGround(RelativeLayout):
             #self.lastHitPos = touch.pos
             self.lastHitPos = (tx, ty)
             # print('touch down event - ',touch.profile,touch.pos,self.lastHitPos)
-
-        return super(PlayGround, self).on_touch_down(touch)
+            return True
+        return False
 
     def on_touch_up(self,touch):
+        if super().on_touch_up(touch):
+            return True
         if self.collide_point(touch.x,touch.y):
             if (touch.time_end-touch.time_start) > 0.6:
                 self.longPress = touch.time_end
-
-        return super().on_touch_up(touch)
+                return True
+        return False
 
     def on_longPress(self, instance, timestamp):
         print('longPressed at {time}'.format(time=timestamp))

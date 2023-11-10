@@ -1,0 +1,2 @@
+Most of the icons are taken from Tango icon theme. Some icons have
+been edited (color adaptation).
