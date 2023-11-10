@@ -1,1 +1,1 @@
-FreecellOfMaemo is a patience card game.
+FreeCell4 is a patience / solitaire card game.

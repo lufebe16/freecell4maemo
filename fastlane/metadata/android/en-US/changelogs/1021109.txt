@@ -1,1 +1,12 @@
-Erste Version.
+Version 1.9
+
+This ist the first Version published with fdroid.
+
+The user interface has been reworked and now displays
+a toolbar at the short edge of the device. 'Dangerous'
+buttons like for 'new deal' or for 'restart game' have
+been place in a second toolbar plane and need to switch
+to that plane first.
+
+A long press to the playground locks automatic screen
+rotation.

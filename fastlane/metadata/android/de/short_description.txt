@@ -1,1 +1,1 @@
-FreecellOfMaemo ist ein Solitär Kartenspiel.
+FreeCell4 ist ein Solitär Kartenspiel.

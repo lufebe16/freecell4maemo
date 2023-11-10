@@ -1,7 +1,7 @@
 [app]
 
 # (str) Title of your application
-title = FreeCell
+title = FreeCell4
 
 # (str) Package name
 package.name = freecell
@@ -125,11 +125,9 @@ android.private_storage = True
 
 # (str) Android NDK directory (if empty, it will be automatically downloaded.)
 #android.ndk_path =
-#android.ndk_path = /home/lb/.cache/sdk-for-p4a/android-ndk-r25b
 
 # (str) Android SDK directory (if empty, it will be automatically downloaded.)
 #android.sdk_path =
-#android.sdk_path = /home/lb/.cache/sdk-for-p4a/sdk
 
 # (str) ANT directory (if empty, it will be automatically downloaded.)
 #android.ant_path =
@@ -137,7 +135,6 @@ android.private_storage = True
 # (bool) If True, then skip trying to update the Android sdk
 # This can be useful to avoid excess Internet downloads or save time
 # when an update is due and you just want to test/build your package
-# android.skip_update = False
 android.skip_update = True
 
 # (bool) If True, then automatically accept SDK license
@@ -230,7 +227,6 @@ android.gradle_dependencies =
 # (bool) Enable AndroidX support. Enable when 'android.gradle_dependencies'
 # contains an 'androidx' package, or any package from Kotlin source.
 # android.enable_androidx requires android.api >= 28
-#android.enable_androidx = False
 android.enable_androidx = True
 
 # (list) add java compile options

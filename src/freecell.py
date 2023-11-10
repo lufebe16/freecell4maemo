@@ -1153,6 +1153,9 @@ class FreeCell(LStreamIOHolder):
         self.widgetLine.pushAction(self.menu2,0.09)
         self.menu2.bind(on_touch_down=close_cb)
 
+        # screen rotation lock zurücksetzen.
+        self.orientation_freeze_reset()
+
     def initMoves(self):
         # jkq
         logging.info('FreeCell: initial moves %s' % self.moves)
