@@ -59,6 +59,13 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version (see <http://www.gnu.org/licenses/>).
 """
 
+#=============================================================================
+
+import os
+os.environ['KIVY_NO_CONSOLELOG'] = "No"
+
+#=============================================================================
+
 #import logging
 
 from kivy.config import Config
@@ -874,6 +881,18 @@ class MoveCardTask(Task):
         #self.tf = 'in_expo'
         #self.tf = 'out_expo'
 
+        def myfunc(x):
+            #return x
+            #return (math.cos((x+1.0)*math.pi)+1.0)/2.0
+            # in_out_cubic:
+            b = 2*x
+            if (x<=0.5):
+                a = (b**3)/2.0
+            if (x>0.5):
+                a = -((2.0-b)**3)/2.0 + 1.0
+            return a
+        self.tf = myfunc
+
     def start(self):
         super(MoveCardTask, self).start()
 
@@ -888,7 +907,20 @@ class MoveCardTask(Task):
         self.card.cardImage.pos = (xf, yf)
         self.card.cardIsMoving = True
 
+        ''
+        def pyth(a,b):
+            return math.sqrt(a*a+b*b)
+
+        # versuch: immer gleiche geschwindigkeit.
+        duration = pyth(xf-xt,yf-yt)/pyth(self.drawingArea.size[0],self.drawingArea.size[1])
+        print ('duration=',duration)
+        # Fazit: sieht gut aus! - bedignt jedoch streng genommen, dass wir
+        # nun auch die startzeiten neu so berechnen müssten, dass die Karten
+        # auch sequenziel (zeitlich in der richtigen Reihenfolge) ankommen.
+        self.anim = Animation(x=xt, y=yt, d=duration, t=self.tf)
+        '''
         self.anim = Animation(x=xt, y=yt, d=self.duration, t=self.tf)
+        '''
         if (self.card.cardImage != None):
             self.anim.bind(on_complete=self.animEnd)
             self.anim.start(self.card.cardImage)
@@ -896,6 +928,8 @@ class MoveCardTask(Task):
             # self.card.printCard()
         else:
             print('start anim, not started: card image == None !')
+
+        print('fps = ',Clock.get_fps())
 
     def animEnd(self, instance, value):
         self.stop()
@@ -2018,7 +2052,7 @@ class FreeCellApp(App):
             loadingscreen.hide_loading_screen()
         except ImportError:
             pass
-        
+
         self.freeCell = FreeCell()
-        self.root = self.freeCell.mainWindow        
+        self.root = self.freeCell.mainWindow
         return self.root

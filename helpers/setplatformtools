@@ -1,0 +1,9 @@
+#!/bin/sh
+# calls sdkmanager to install platform tools matching buildozer.spec
+# api selection.
+api=$(cat buildozer.spec | \
+    grep -e "^android[.]api" | \
+    sed -e "s/android.api = \(.*\)/\1/")
+
+sdkmanager "'build-tools;$api.0.0'" "'platforms;android-$api'"
+# echo "'build-tools;$api.0.0'" "'platforms;android-$api'"

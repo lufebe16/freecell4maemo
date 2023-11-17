@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from kivy.uix.image import *
+from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import *
 from kivy.uix.relativelayout import *
 from kivy.uix.stacklayout import StackLayout
@@ -23,28 +24,39 @@ from kivy.uix.floatlayout import *
 from kivy.graphics import *
 from kivy.properties import *
 
-# -------------------------------------
-# Image widget, anstelle von gtk pixbuf
 
+# -----------------------------------------
+# Image widget, simplest (and fastest) way
 
-class CardImg(Image):
+class CardImg(Widget):
     selected = BooleanProperty(False)
 
     def __init__(self, **kwargs):
-        super(CardImg, self).__init__(**kwargs)
-        self.allow_stretch = 1
-        self.keep_ratio = 0
-        self.size = self.texture.size
-        self.size_hint = (1.0 / 9.0, 1.0 / 4.0)
+        super(CardImg, self).__init__()
+
+        # we expect source in kwargs.
+        #print (kwargs["source"])
+
+        image = Image(**kwargs)
+        texture = image.texture
+
         self.selected = False
+        with self.canvas:
+            self.color = Color(1.0,1.0,1.0,1.0)
+            self.rect = Rectangle(texture=texture)
+        self.size = texture.size
+
+    def on_size(self,a,s):
+        self.rect.size = s
+
+    def on_pos(self,a,p):
+        self.rect.pos = p
 
     def on_selected(self, instance, value):
         if (value):
-            self.color = [0.5, 0.7, 0.7, 1.0]
-            #self.color = [1.0, 0.3, 0.9, 1.0]
+            self.color.rgba = [0.5, 0.7, 0.7, 1.0]
         else:
-            self.color = [1.0, 1.0, 1.0, 1.0]
-        self.canvas.ask_update()
+            self.color.rgba = [1.0, 1.0, 1.0, 1.0]
 
     def move(self, pos):
         self.pos = pos
@@ -57,7 +69,6 @@ class CardImg(Image):
 
     def get_width(self):
         return self.size[0]
-
 
 # positions-steuerung (muss ausserhalb der klasse sein).
 # center_x:
@@ -128,20 +139,33 @@ class ImageButton(ButtonBehavior, Image):
     def __init__(self,bkgnd=(0,0,0,1),**kw):
 
         # fit_mode: erst ab version 2.2.1 - android benutzt aber noch 2.2.0!
+        allow_stretch = True
+        keep_ratio = False
         if kivy.__version__ < "2.2.1":
             # print ('version is than 2.2.0 or lower')
             if "fit_mode" in kw:
                 if kw["fit_mode"] == "contain":
                     # fit_mode='contain' emulieren:
-                    self.allow_stretch = True
-                    self.keep_ratio = True
+                    allow_stretch = True
+                    keep_ratio = True
                 if kw["fit_mode"] == "fill":
                     # fit_mode='contain' emulieren:
-                    self.allow_stretch = True
-                    self.keep_ratio = False
+                    allow_stretch = True
+                    keep_ratio = False
+                if kw["fit_mode"] == "scale_down":
+                    # fit_mode='contain' emulieren:
+                    allow_stretch = False
+                    keep_ratio = False
+                if kw["fit_mode"] == "cover":
+                    # fit_mode='contain' emulieren:
+                    allow_stretch = True
+                    keep_ratio = True
                 del kw["fit_mode"]
 
         super(ImageButton, self).__init__(**kw)
+        if kivy.__version__ < "2.2.1":
+            self.allow_stretch = allow_stretch
+            self.keep_ratio = keep_ratio
         self.bind(size=self.update_rect, pos=self.update_rect)
         with self.canvas.before:
             Color(bkgnd[0],bkgnd[1],bkgnd[2],bkgnd[3])

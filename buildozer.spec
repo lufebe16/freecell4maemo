@@ -343,19 +343,45 @@ android.debug_artifact = apk
 
 # (str) python-for-android branch to use, defaults to master
 #p4a.branch = master
-p4a.branch = develop
+
+# p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
 #p4a.commit = HEAD
 
+# this is tha last release that works:
+p4a.commit = v2023.02.10
+
+# breakdown of animation error: (set branch above to develop for that).
+
 # jun10/23: (breaks animations in kivy!)
 # p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
+# version 2023.9.16 auch. Die animation ruckelt fürchterlich
+# in der android version. Keine glatte Bewegung mehr. No
+# smooth gliding any more !!
+# The problem only exist on android build for Kivy version >=2.2.0
+# Desktop version dont have that problem.
 
-# feb11/23: (o.k.)
-p4a.commit = 56bf7335f08a51ec4e8427dd672e1b25a674026b
+# May 22 (version v2023.5.21)  -> bad !!!!
+# p4a.commit = 0daa74c8ed3c7aa09940555297a8c78d420566d1
 
-# sep05/22: (too old)
-# c1ec69c0a95414a5b99498844af144dfeedcba72
+# Mai 21 12.37:20 (after kivy 2.2.0 update)  -> bad !!!!
+# p4a.commit = 13fb9792c128d4b7a1280e9fb4fef40df81e6358
+##---------------------------------------------------------
+## note: THIS IS THE RELEVANT COMMIT THAT SCREWS UP Animation
+##---------------------------------------------------------
+
+# May 13 (before kivy 2.2.0 update and after pyjnius update) -> good !!
+# p4a.commit =  e76826678b440ecd7fcfa31de88d4171bb70331f
+
+# Feb 12 14:01:45 (python 3.10 update)  -> good
+#p4a.commit = 2b15b02c5d63b5559039f4fe4ad4c62acb385361
+
+# Feb 11 10:07:05  -> good
+# p4a.commit = bdf188369ed308400769be1947320527b9938109
+
+# feb11/23, 10.05:50: (animation is stll o.k.) -> good
+# p4a.commit = 56bf7335f08a51ec4e8427dd672e1b25a674026b
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 #p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
