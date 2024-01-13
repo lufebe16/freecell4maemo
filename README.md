@@ -10,6 +10,12 @@ are build procedures supplied to build an Android App.
 
 The software is open source as of the GNU General Public License (see LICENSE)
 
+[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png"
+     alt="Get it on F-Droid"
+     height="80">](https://f-droid.org/packages/org.lufebe16.freecell/)
+
+Or download the latest APK from the [Release Section](https://github.com/lufebe16/freecell4maemo/releases/latest).
+
 # Usage
 
 Initially the app displays the state of the last played game. To start a
