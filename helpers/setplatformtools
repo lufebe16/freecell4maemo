@@ -3,7 +3,7 @@
 # api selection.
 api=$(cat buildozer.spec | \
     grep -e "^android[.]api" | \
-    sed -e "s/android.api = \(.*\)/\1/")
+    sed -e "s/^.*\([0-9][0-9]\).*/\1/")
 
-sdkmanager "'build-tools;$api.0.0'" "'platforms;android-$api'"
-# echo "'build-tools;$api.0.0'" "'platforms;android-$api'"
+sdkmanager "build-tools;$api.0.0" "platforms;android-$api"
+# echo "build-tools;$api.0.0" "platforms;android-$api"

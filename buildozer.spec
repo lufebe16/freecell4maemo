@@ -32,7 +32,7 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp, img, xml
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys, ENV*, ARM*, *.sublime-*
 
 # (str) Application versioning (method 1)
-version = 1.9
+version = 2.0
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -336,67 +336,31 @@ android.debug_artifact = apk
 #
 
 # (str) python-for-android URL to use for checkout
-#p4a.url =
+# p4a.url =
 
 # (str) python-for-android fork to use in case if p4a.url is not specified, defaults to upstream (kivy)
-#p4a.fork = kivy
+# p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-#p4a.branch = master
-
-# p4a.branch = develop
+# p4a.branch = master
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
-#p4a.commit = HEAD
-
-# this is tha last release that works:
-p4a.commit = v2023.02.10
-
-# breakdown of animation error: (set branch above to develop for that).
-
-# jun10/23: (breaks animations in kivy!)
-# p4a.commit = da9a1942dd1ce178fec2b9cea2549c0dc1cd5c0f
-# version 2023.9.16 auch. Die animation ruckelt fürchterlich
-# in der android version. Keine glatte Bewegung mehr. No
-# smooth gliding any more !!
-# The problem only exist on android build for Kivy version >=2.2.0
-# Desktop version dont have that problem.
-
-# May 22 (version v2023.5.21)  -> bad !!!!
-# p4a.commit = 0daa74c8ed3c7aa09940555297a8c78d420566d1
-
-# Mai 21 12.37:20 (after kivy 2.2.0 update)  -> bad !!!!
-# p4a.commit = 13fb9792c128d4b7a1280e9fb4fef40df81e6358
-##---------------------------------------------------------
-## note: THIS IS THE RELEVANT COMMIT THAT SCREWS UP Animation
-##---------------------------------------------------------
-
-# May 13 (before kivy 2.2.0 update and after pyjnius update) -> good !!
-# p4a.commit =  e76826678b440ecd7fcfa31de88d4171bb70331f
-
-# Feb 12 14:01:45 (python 3.10 update)  -> good
-#p4a.commit = 2b15b02c5d63b5559039f4fe4ad4c62acb385361
-
-# Feb 11 10:07:05  -> good
-# p4a.commit = bdf188369ed308400769be1947320527b9938109
-
-# feb11/23, 10.05:50: (animation is stll o.k.) -> good
-# p4a.commit = 56bf7335f08a51ec4e8427dd672e1b25a674026b
+p4a.commit = v2023.09.16
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
-#p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
+# p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
 
 # (str) The directory in which python-for-android should look for your own build recipes (if any)
-#p4a.local_recipes =
+# p4a.local_recipes =
 
 # (str) Filename to the hook for p4a
-#p4a.hook =
+# p4a.hook =
 
 # (str) Bootstrap to use for android builds
 # p4a.bootstrap = sdl2
 
 # (int) port number to specify an explicit --port= p4a argument (eg for bootstrap flask)
-#p4a.port =
+# p4a.port =
 
 # Control passing the --use-setup-py vs --ignore-setup-py to p4a
 # "in the future" --use-setup-py is going to be the default behaviour in p4a, right now it is not

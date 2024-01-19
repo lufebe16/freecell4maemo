@@ -53,6 +53,7 @@ Freecell4Maemo:
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
            Copyright 2016-2023, Lukas Beck
+Version 2.0
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
@@ -62,7 +63,7 @@ This program is free software: you can redistribute it and/or modify it under th
 #=============================================================================
 
 import os
-os.environ['KIVY_NO_CONSOLELOG'] = "No"
+#os.environ['KIVY_NO_CONSOLELOG'] = "No"
 
 #=============================================================================
 
@@ -1094,16 +1095,26 @@ class FreeCell(LStreamIOHolder):
         self.icon.bind(on_press=self.about_menu_show)
         self.aboutBox = None
         self.space = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
+        self.space2 = ImageButton(source="icons/grey2.jpg",fit_mode="fill",bkgnd=(0.25,0.3,0.3,1))
 
-        #self.testbutton = ImageButton(source="icons/about.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
-        #self.testbutton.bind(on_press=self.test_toast)
+        # self.testbutton = ImageButton(source="icons/about.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
+        # self.testbutton.bind(on_press=self.test_toast)
+
+
+        #self.titleLabel = Label(text='FreeCell4')
+        self.titleLabel = TitleLabel(bkgnd=(0.25,0.3,0.3,1))
+
 
         self.header = ActionLine()
         self.header.invertOrder = False
         self.header.addButton(self.icon, 1.0)
-        self.header.addButton(self.space, 6.0)
-        #self.header.addButton(self.space, 5.0)
-        #self.header.addButton(self.testbutton, 1.0)
+        #self.header.addButton(self.space, 6.0)
+
+        self.header.addButton(self.space, 5.0)
+        self.header.addButton(self.titleLabel, 1.0)
+
+        # self.header.addButton(self.space, 5.0)
+        # self.header.addButton(self.testbutton, 1.0)
 
         # Settings widget (eigentlich 2. Menu ebene).
 
@@ -1151,7 +1162,7 @@ class FreeCell(LStreamIOHolder):
 
         #self.initMoves()
 
-    '''
+
     def test_toast(self, *args):
         from toast import Toast
 
@@ -1159,7 +1170,9 @@ class FreeCell(LStreamIOHolder):
         label.show(parent=self.drawingArea,duration=2.5,offset=(0,-0.15))
         #label.popup(parent=self.drawingArea,offset=(0,-0.15))
         print ('after toast')
-        '''
+
+        ## TBD: speed test implementieren.
+
 
     def orientation_freeze(self, *args):
         if not self.orientationIsLocked:
@@ -2054,5 +2067,6 @@ class FreeCellApp(App):
             pass
 
         self.freeCell = FreeCell()
+        # self.root = BaseWindow(self.freeCell.mainWindow)
         self.root = self.freeCell.mainWindow
         return self.root

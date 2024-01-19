@@ -1,0 +1,7 @@
+Version 2.0
+
+Updated libraries/build tools to:
+- p4a 2023.09.16
+- Kivy 2.2.1
+- Python 3.10
+New faster image widget implementation

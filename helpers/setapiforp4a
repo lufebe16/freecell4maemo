@@ -4,4 +4,4 @@
 echo "#!/bin/bash"
 cat buildozer.spec | \
     grep -e "^android[.]api" | \
-    sed -e "s/android.api\(.*\)/echo 'API level:\1'/"
+    sed -e "s/android.api.*=\(.*\)/echo 'API level:\1'/"

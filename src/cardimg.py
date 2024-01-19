@@ -24,7 +24,6 @@ from kivy.uix.floatlayout import *
 from kivy.graphics import *
 from kivy.properties import *
 
-
 # -----------------------------------------
 # Image widget, simplest (and fastest) way
 
@@ -37,8 +36,11 @@ class CardImg(Widget):
         # we expect source in kwargs.
         #print (kwargs["source"])
 
-        image = Image(**kwargs)
-        texture = image.texture
+        if 'texture' in kwargs:
+            texture = kwargs['texture']
+        else:
+            image = Image(**kwargs)
+            texture = image.texture
 
         self.selected = False
         with self.canvas:
@@ -69,6 +71,8 @@ class CardImg(Widget):
 
     def get_width(self):
         return self.size[0]
+
+# -----------------------------------------
 
 # positions-steuerung (muss ausserhalb der klasse sein).
 # center_x:
@@ -190,8 +194,66 @@ class ImageButton(ButtonBehavior, Image):
 
 
 # -----------------------------------------
-# Zeile mit Knoepfen, anstelle von gtk menu
+# Label.
 
+from kivy.uix.label import Label
+
+class TitleLabel(Widget):
+    def __init__(self,bkgnd=(0,0,0,1),**kw):
+        super(TitleLabel, self).__init__(**kw)
+
+        text = 'FREECELL4'
+        text = 'FreeCell4'
+        text = 'FC4'
+        ltext = [c for c in text]
+        self.textL = '\n'.join(ltext)
+        self.textP = ' '.join(ltext)
+
+        self.label = Label(text=self.textL,halign="center")
+        self.label.texture_update()
+
+        self.bind(size=self.update_rect,pos=self.update_rect)
+        with self.canvas.before:
+            Color(bkgnd[0],bkgnd[1],bkgnd[2],bkgnd[3])
+            self.brect = Rectangle(size=self.size, pos=self.pos)
+        with self.canvas:
+            Color(bkgnd[0],bkgnd[1]+0.33,bkgnd[2],bkgnd[3])
+            PushMatrix()
+            self.rot = Rotate(angle=0)
+            self.rect = Rectangle(texture=self.label.texture)
+            PopMatrix()
+
+    def make_contain(self, s, p, texture, rect):
+        taspect = texture.size[0]/texture.size[1]
+        waspect = s[0]/s[1]
+        r = rect
+        if waspect < taspect:
+            s1 = s[1]*waspect/taspect
+            r.size = (s[0], s1)
+            r.pos = (p[0], p[1]+(s[1]-s1)/2.0)
+        else:
+            s0 = s[0]/waspect*taspect
+            r.size = (s0, s[1])
+            r.pos = (p[0]+(s[0]-s0)/2.0, p[1])
+
+    def update_rect(self, instance, value):
+        self.brect.pos = instance.pos
+        self.brect.size = instance.size
+        if instance.size[0]>instance.size[1]:
+            self.label.text = self.textP
+            self.label.font_direction = "ltr"
+            self.rot.angle=0
+        else:
+            self.label.text = self.textP
+            self.label.font_direction = "ltr"
+            self.rot.angle=90
+            self.rot.origin=(instance.pos[0]+instance.size[0]/2.0,instance.pos[1]+instance.size[1]/2.0)
+        self.label.texture_update()
+        self.rect.texture = self.label.texture
+        self.make_contain(instance.size,instance.pos,self.label.texture,self.rect)
+
+# -----------------------------------------
+# Zeile mit Knoepfen, anstelle von gtk menu
 
 class ButtonLine(BoxLayout):
     def __init__(self,initsize=1.0):
@@ -203,7 +265,6 @@ class ButtonLine(BoxLayout):
         else:
             self.size_hint = (0.1, initsize)
 
-
 class ButtonColm(BoxLayout):
     def __init__(self,initsize=1.0):
         super(ButtonColm, self).__init__()
@@ -213,7 +274,6 @@ class ButtonColm(BoxLayout):
             self.size_hint = (initsize, 0.1)
         else:
             self.size_hint = (0.1, initsize)
-
 
 # -----------------------------------------
 # Settings.
@@ -449,13 +509,16 @@ class MainWindow(BoxLayout):
         self._update_rect(self, 0)
 
     def _update_rect(self, instance, value):
+        print('_update_rect',instance.pos)
+        print('_update_rect',instance.size)
+
         self.rect.pos = instance.pos
         self.rect.size = instance.size
+
         if instance.size[0] > instance.size[1]:
             self.game.orientation = "horizontal"
         else:
             self.game.orientation = "vertical"
-        #print('_update_rect',instance.size)
 
     '''
     def _fs(self, d):
@@ -478,6 +541,9 @@ class MainWindow(BoxLayout):
     '''
     def on_touch_down(self,touch):
         ret = False
+        #if super(MainWindow, self).on_touch_down(touch):
+        #    return True
+
         if touch.is_double_tap:
             print('Touch is a double tap !')
             print(' - interval is',touch.double_tap_time)
@@ -491,9 +557,10 @@ class MainWindow(BoxLayout):
                     break
             return ret
 
-    '''
     def on_touch_up(self,touch):
-        pass
+        if super(MainWindow, self).on_touch_up(touch):
+            return True
+        '''
         print('Touch up !')
         for c in self.children:
             ret = c.on_touch_up(touch)
@@ -503,6 +570,100 @@ class MainWindow(BoxLayout):
             if (touch.time_end-touch.time_start) > 0.5:
                 print ('on_touch_up Layout - long press')
                 return True
+        '''
+        return False
 
-        return ret
-    '''
+# -------------------------------------------------------------------------------
+# Just for a test: Kann ich ein basisfenster machen, welches die ganze situation
+# um 90,180,270 grad drehen kann?
+
+from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
+from kivy.uix.relativelayout import RelativeLayout
+from kivy.graphics.transformation import Matrix
+
+# Mit diesem Ansatz funktionierts:
+
+class BaseWindow(ScatterLayout):
+    def __init__(self, wmain, **kw):
+        super(BaseWindow, self).__init__(**kw)
+
+        # keine interaktion mit user!
+        self.do_scale = False
+        self.do_rotation = False
+        self.do_translation = False
+
+        # definition der orientierungen
+        self.rightAngle = 3.14159/2.0
+        self.orientation = {
+            'portrait': 0,
+            'landscape': self.rightAngle,
+            'inverse-portrait': 2.0*self.rightAngle,
+            'inverse-landscape': -self.rightAngle,
+            }
+
+        self.deviceOri = 'portrait'
+        self.lastm = None
+        self.lasta = None
+        self.inside = False
+        self.add_widget(wmain)
+        self.bind(size=self._update, pos=self._update)
+
+        # debug
+        # self.deviceOri = 'landscape'
+
+    def middle(self,pos,size):
+        return (pos[0]+size[0]/2.0,pos[1]+size[1]/2.0)
+
+    def collide_point(self, x, y):
+        # Maskierung von scatterlayout aushebeln
+        return True
+
+    def mytransform(self,ori):
+        # wir brauchen einen reetrancy lock sonst himmelfahrt.
+        if self.inside: return
+        self.inside = True
+
+        # alte transformation zurücksetzen. (gibt es keine einfacher Art?)
+        if self.lastm is not None:
+            self.apply_transform(self.lastm.inverse(),anchor=self.lasta)
+            self.lastm = None
+
+        # neue Transformation anwenden
+        r = Matrix().rotate(self.orientation[ori],0,0,1)
+        a = self.middle(self.pos,self.size)
+        self.apply_transform(r,anchor=a)
+        self.lastm = r
+        self.lasta = a
+
+        # Content informieren.
+        c = self.children[0]
+        # c ist das 'content' member von scatterlayout, ein Floatlayout
+        # c.children[0] ist unser 'mainwindow'.
+
+        print('self.size =',self.size)
+        print('self-pos  =',self.pos)
+        if ori in ['portrait','inverse-portrait']:
+            c.children[0].pos = (self.pos[0],self.pos[1])
+            c.size = (self.size[0],self.size[1])
+        else:
+            c.children[0].pos = (self.pos[0],self.pos[1])
+            c.size = (self.size[1],self.size[0])
+
+        # Ist etwas seltsam. Aber nur so funktionert das korrekt:
+        # - Die Ausdehnung muss am 'content' fenster korrigiert werden, hicht
+        #   am mainwindow!
+        # - Die position jedoch direkt am 'mainwindow', sonst gehts auch nicht!
+        # - Die position wurde durch die transformation bereits korrekt berechnet.
+        # - Nicht so die Ausdehnung. Diese wurde nicht angetastet!
+
+        # unlock:
+        self.inside = False
+
+    def _update(self, instance, value):
+        self.mytransform(self.deviceOri)
+
+    def setOrientation(self, ori):
+        self.deviceOri = ori
+        self._update(self,self.size)
+
+# ------------------------------------------------------------------------------
