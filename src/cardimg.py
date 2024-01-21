@@ -439,6 +439,7 @@ class ProgramArea(ButtonLine):
         self.add_widget(table)
         self.addAction()
         self.actionStack = []
+        self.oriEventId = None
 
     def setOrientation(self):
         if self.orientation == "vertical":
@@ -480,7 +481,6 @@ class ProgramArea(ButtonLine):
             self.addAction()
 
     def on_orientation(self,instance,value):
-        print ('on_orientation',instance,value)
         self.setOrientation()
 
 # -----------------------------------------
@@ -495,8 +495,6 @@ class MainWindow(BoxLayout):
         super(MainWindow, self).__init__()
         self.orientation = 'vertical'
         self.bind(size=self._update_rect, pos=self._update_rect)
-        # (see p4a issue 1724):
-        self.bind(size=Clock.schedule_once(self._ur, 0.1))
         self.full = False
         self.game = game
         self.add_widget(self.game)
@@ -504,9 +502,6 @@ class MainWindow(BoxLayout):
         with self.canvas.before:
             Color(0, 0.7, 0.1, 1)  # gruen wie ein Spieltisch sollte das sein.
             self.rect = Rectangle(size=self.size, pos=self.pos)
-
-    def _ur(self, d):
-        self._update_rect(self, 0)
 
     def _update_rect(self, instance, value):
         print('_update_rect',instance.pos)
@@ -580,10 +575,13 @@ class MainWindow(BoxLayout):
 from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
 from kivy.uix.relativelayout import RelativeLayout
 from kivy.graphics.transformation import Matrix
+import math
 
 # Mit diesem Ansatz funktionierts:
 
 class BaseWindow(ScatterLayout):
+    angle = NumericProperty(0.0)
+
     def __init__(self, wmain, **kw):
         super(BaseWindow, self).__init__(**kw)
 
@@ -593,23 +591,24 @@ class BaseWindow(ScatterLayout):
         self.do_translation = False
 
         # definition der orientierungen
-        self.rightAngle = 3.14159/2.0
+        '''
         self.orientation = {
             'portrait': 0,
-            'landscape': self.rightAngle,
-            'inverse-portrait': 2.0*self.rightAngle,
-            'inverse-landscape': -self.rightAngle,
+            'landscape': 90.0,
+            'inverse-portrait': 180,
+            'inverse-landscape': -90.0,
             }
+        '''
 
-        self.deviceOri = 'portrait'
         self.lastm = None
         self.lasta = None
         self.inside = False
         self.add_widget(wmain)
         self.bind(size=self._update, pos=self._update)
+        self.angle = 0.0
 
         # debug
-        # self.deviceOri = 'landscape'
+        #self.angle = 277.0
 
     def middle(self,pos,size):
         return (pos[0]+size[0]/2.0,pos[1]+size[1]/2.0)
@@ -618,18 +617,16 @@ class BaseWindow(ScatterLayout):
         # Maskierung von scatterlayout aushebeln
         return True
 
-    def mytransform(self,ori):
+    def mytransform(self):
         # wir brauchen einen reetrancy lock sonst himmelfahrt.
         if self.inside: return
         self.inside = True
 
-        # alte transformation zurücksetzen. (gibt es keine einfacher Art?)
-        if self.lastm is not None:
-            self.apply_transform(self.lastm.inverse(),anchor=self.lasta)
-            self.lastm = None
+        # alte transformation zurücksetzen.
+        self.transform = Matrix()
 
         # neue Transformation anwenden
-        r = Matrix().rotate(self.orientation[ori],0,0,1)
+        r = Matrix().rotate(self.angle*math.pi/180.0,0,0,1)
         a = self.middle(self.pos,self.size)
         self.apply_transform(r,anchor=a)
         self.lastm = r
@@ -642,28 +639,42 @@ class BaseWindow(ScatterLayout):
 
         print('self.size =',self.size)
         print('self-pos  =',self.pos)
-        if ori in ['portrait','inverse-portrait']:
-            c.children[0].pos = (self.pos[0],self.pos[1])
-            c.size = (self.size[0],self.size[1])
+        c.children[0].pos = (self.pos[0],self.pos[1])
+
+        # size berechnen (vorl. einfache methode, stimmt bei 90,180,270, liefert
+        # aber auch dazwischen etwas)
+        s = self.size
+        angl = self.angle*math.pi/180.0
+        sangl = math.fabs(math.sin(angl))
+        ds = math.fabs(s[0]-s[1]) * sangl
+        if s[0]<s[1]:
+            csize = (s[0]+ds,s[1]-ds)
         else:
-            c.children[0].pos = (self.pos[0],self.pos[1])
-            c.size = (self.size[1],self.size[0])
+            csize = (s[0]-ds,s[1]+ds)
+
+        print('angle',angl)
+        print('sangle',sangl)
+        print('ds',ds)
+        print('csize',csize)
+        c.size = csize
 
         # Ist etwas seltsam. Aber nur so funktionert das korrekt:
         # - Die Ausdehnung muss am 'content' fenster korrigiert werden, hicht
         #   am mainwindow!
         # - Die position jedoch direkt am 'mainwindow', sonst gehts auch nicht!
         # - Die position wurde durch die transformation bereits korrekt berechnet.
-        # - Nicht so die Ausdehnung. Diese wurde nicht angetastet!
+        # - Nicht so die Ausdehnung. Diese wurde nicht angetastet! -> eigener
+        #   Ansatz.
 
         # unlock:
         self.inside = False
 
-    def _update(self, instance, value):
-        self.mytransform(self.deviceOri)
+    def on_angle(self, instance, value):
+        print('on_ongle')
+        self.mytransform()
 
-    def setOrientation(self, ori):
-        self.deviceOri = ori
-        self._update(self,self.size)
+    def _update(self, instance, value):
+        print('_update')
+        self.mytransform()
 
 # ------------------------------------------------------------------------------

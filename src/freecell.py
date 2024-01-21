@@ -1158,10 +1158,7 @@ class FreeCell(LStreamIOHolder):
         self.selectedCardType = None
 
         self.debugMode = False
-        self.orientationIsLocked = False
-
         #self.initMoves()
-
 
     def test_toast(self, *args):
         from toast import Toast
@@ -1173,18 +1170,9 @@ class FreeCell(LStreamIOHolder):
 
         ## TBD: speed test implementieren.
 
-
     def orientation_freeze(self, *args):
-        if not self.orientationIsLocked:
-            AndroidOri().lockOrientation()
-            self.orientationIsLocked = True
-            self.drawingArea.setLockIcon(self.orientationIsLocked)
-        print ('freeze_ori')
-
-    def orientation_freeze_reset(self):
-        AndroidOri().unLockOrientation()
-        self.orientationIsLocked = False
-        self.drawingArea.setLockIcon(False)
+        app = App.get_running_app()
+        app.orientation_freeze()
 
     def menu2_cb(self,widget):
         print ('menu2_cb')
@@ -1201,7 +1189,8 @@ class FreeCell(LStreamIOHolder):
         self.menu2.bind(on_touch_down=close_cb)
 
         # screen rotation lock zurücksetzen.
-        self.orientation_freeze_reset()
+        app = App.get_running_app()
+        app.orientation_freeze_reset()
 
     def initMoves(self):
         # jkq
@@ -1989,6 +1978,51 @@ class FreeCell(LStreamIOHolder):
 # tip: wegen black screen. Wo einbauen ?
 # Window.update_viewport()
 
+from sensors import sensor_update
+class sensor_detect(sensor_update):
+    def __init__(self, mode=0, step=1.0):
+        super(sensor_detect,self).__init__(mode,step)
+        self.base = None
+        self.locked = False
+        self.animlock = False
+
+    def setbase(self,base):
+        self.base = base
+
+    def update(self,x,y,z):
+        if self.locked: return
+        if self.animlock: return
+        if z>8.0: return
+
+        if abs(x) < abs(y):
+            if y>0:
+                self.base.angle = 0.0
+            else:
+                self.base.angle = 180.0
+        else:
+            if x<0:
+                self.base.angle = 90.0
+                '''
+                def cmpl(*args):
+                    self.animlock = False
+                anim = Animation(angle=90.0, d=1.0, t='in_out_quad', s=0.2)
+                anim.bind(on_complete=cmpl)
+                self.animlock = True
+                anim.start(self.base)
+                '''
+            else:
+                self.base.angle = 270.0
+
+    def lock(self):
+        if self.reader is None:
+            AndroidOri().lockOrientation()
+        self.locked = True
+        
+    def unlock(self):
+        if self.reader is None:
+            AndroidOri().lockOrientation()
+        self.locked = False
+
 class FreeCellApp(App):
 
     '''
@@ -2016,6 +2050,24 @@ class FreeCellApp(App):
             # aktivieren. War nur ein Testversuch.
     '''
 
+    def orientation_freeze(self):
+        if not self.orientationIsLocked:
+            if self.sensor_update is None:
+                AndroidOri().lockOrientation()
+            else:
+                self.sensor_update.lock()
+            self.orientationIsLocked = True
+            self.freeCell.drawingArea.setLockIcon(self.orientationIsLocked)
+        print ('freeze_ori')
+
+    def orientation_freeze_reset(self):
+        if self.sensor_update is None:
+            AndroidOri().unLockOrientation()
+        else:
+            self.sensor_update.unlock()
+        self.orientationIsLocked = False
+        self.freeCell.drawingArea.setLockIcon(False)
+
     def windowUpdate(self,dt):
         logging.info("FreeCellApp: extra window draw")
         if self.freeCell is not None:
@@ -2025,6 +2077,8 @@ class FreeCellApp(App):
         super(FreeCellApp, self).__init__()
         self.freeCell = None
         self.root = None
+        self.sensor_update = sensor_detect(step=0.25)
+        self.orientationIsLocked = False
 
     def on_start(self):
         logging.info("FreeCellApp: on_start")
@@ -2039,23 +2093,26 @@ class FreeCellApp(App):
         Clock.schedule_once(self.windowUpdate, 3)
         Clock.schedule_once(self.windowUpdate, 5)
 
+        self.sensor_update.start_reading()
         # self.openSettingsAllFilesAccess()
 
     def on_stop(self):
         logging.info("FreeCellApp: on_stop")
         if self.freeCell is not None:
             self.freeCell.save_game()
+        self.sensor_update.stop_reading()
 
     def on_pause(self):
         logging.info("FreeCellApp: on_pause")
         if self.freeCell is not None:
             self.freeCell.save_game()
+        self.sensor_update.stop_reading()
         return True
 
     def on_resume(self):
         logging.info("FreeCellApp: on_resume")
-        self.freeCell.orientation_freeze_reset()
-        pass
+        self.sensor_update.start_reading()
+        self.orientation_freeze_reset()
 
     def build(self):
         logging.info("FreeCellApp: build()")
@@ -2067,6 +2124,7 @@ class FreeCellApp(App):
             pass
 
         self.freeCell = FreeCell()
-        # self.root = BaseWindow(self.freeCell.mainWindow)
-        self.root = self.freeCell.mainWindow
+        self.root = BaseWindow(self.freeCell.mainWindow)
+        # self.root = self.freeCell.mainWindow
+        self.sensor_update.setbase(self.root)
         return self.root

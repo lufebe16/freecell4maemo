@@ -55,7 +55,8 @@ presplash.filename = %(source.dir)s/icons/gnome-freecell384.png
 icon.filename = %(source.dir)s/icons/gnome-freecell48.png
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
-orientation = portrait, landscape
+# orientation = portrait, landscape
+orientation = portrait
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
@@ -197,7 +198,7 @@ android.extra_manifest_application_arguments = ./xml/extra_app.xml
 
 # (list) List of Java files to add to the android project (can be java or a
 # directory containing the files)
-#android.add_src =
+android.add_src = java
 
 # (list) Android AAR archives to add
 #android.add_aars =
