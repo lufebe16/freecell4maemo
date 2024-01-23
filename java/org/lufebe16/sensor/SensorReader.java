@@ -124,7 +124,7 @@ public class SensorReader implements SensorEventListener
     private long lastMilis = 0;
 
     private double[] evalues = new double[3];
-    private Smoother esmooth = new Smoother(80);
+    private Smoother esmooth = new Smoother(40);
 
     public void onSensorChanged(SensorEvent event)
     {

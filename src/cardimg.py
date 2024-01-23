@@ -15,6 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from kivy.core.image import Image as CoreImage
 from kivy.uix.image import *
 from kivy.uix.widget import Widget
 from kivy.uix.boxlayout import *
@@ -39,9 +40,10 @@ class CardImg(Widget):
         if 'texture' in kwargs:
             texture = kwargs['texture']
         else:
-            image = Image(**kwargs)
+            image = CoreImage(kwargs['source'])
             texture = image.texture
 
+        self.texture = texture
         self.selected = False
         with self.canvas:
             self.color = Color(1.0,1.0,1.0,1.0)
@@ -71,6 +73,36 @@ class CardImg(Widget):
 
     def get_width(self):
         return self.size[0]
+
+    def on_touch_down(self, touch):
+        if self.collide_point(*touch.pos):
+            # So wissen wir im Playground, ob eine Karte getroffen wurde.
+            # Wir wollen das dort unterscheiden können. Die Selektion selbst
+            # wird dort berechnet. Das ist historisch so.
+            return True
+        return False
+
+    def on_touch_up(self, touch):
+        if self.collide_point(*touch.pos):
+            return True
+        return False
+
+# -----------------------------------------
+
+class ImagesCache(object):
+    def __init__(self):
+        self.images = {}
+
+    def getCard(self, source):
+        if not source in self.images:
+            print('cache miss for:',source)
+            self.images[source] = CardImg(source=source)
+
+        if source in self.images:
+            return self.images[source]
+        return None
+
+Cache = ImagesCache()
 
 # -----------------------------------------
 
@@ -178,20 +210,6 @@ class ImageButton(ButtonBehavior, Image):
     def update_rect(self, instance, value):
         self.rect.pos = instance.pos
         self.rect.size = instance.size
-
-    def on_press(self):
-        print ('on_press')
-        #print ('on_press',widget)
-        pass
-
-    def on_touch_down(self, touch):
-        super().on_touch_down(touch)
-        pass
-
-    def on_touch_up(self, touch):
-        super().on_touch_up(touch)
-        pass
-
 
 # -----------------------------------------
 # Label.
@@ -341,15 +359,17 @@ class PlayGround(RelativeLayout):
 
     def on_touch_down(self, touch):
         if super(PlayGround, self).on_touch_down(touch):
+            tx = touch.px - self.pos[0]
+            ty = touch.py - self.pos[1]
+            self.lastHitPos = (tx, ty)
             return True
         if self.collide_point(*touch.pos):
             # Achtung die Korrdinaten sind screen koordinaten !!
             tx = touch.px - self.pos[0]
             ty = touch.py - self.pos[1]
-            #self.lastHitPos = touch.pos
             self.lastHitPos = (tx, ty)
             # print('touch down event - ',touch.profile,touch.pos,self.lastHitPos)
-            return True
+            return False
         return False
 
     def on_touch_up(self,touch):
@@ -536,8 +556,8 @@ class MainWindow(BoxLayout):
     '''
     def on_touch_down(self,touch):
         ret = False
-        #if super(MainWindow, self).on_touch_down(touch):
-        #    return True
+        if super(MainWindow, self).on_touch_down(touch):
+            return True
 
         if touch.is_double_tap:
             print('Touch is a double tap !')
@@ -545,12 +565,18 @@ class MainWindow(BoxLayout):
             print(' - distance between previous is',touch.double_tap_distance)
             self.full = not self.full
             #Clock.schedule_once(self._fs, 0.1)
-        else:
-            for c in self.children:
-                ret = c.on_touch_down(touch)
-                if ret:
-                    break
-            return ret
+            return True
+
+        if 1:
+            pass
+
+            print(self.parent)
+            print(self.parent.parent)
+            # self.parent.parent.angle = (self.parent.parent.angle + 15.0) % 360.0
+            self.parent.angle = (self.parent.angle + 15.0) % 360.0
+
+        print(ret)
+        return ret
 
     def on_touch_up(self,touch):
         if super(MainWindow, self).on_touch_up(touch):
@@ -572,15 +598,30 @@ class MainWindow(BoxLayout):
 # Just for a test: Kann ich ein basisfenster machen, welches die ganze situation
 # um 90,180,270 grad drehen kann?
 
-from kivy.uix.scatterlayout import ScatterLayout, ScatterPlaneLayout
-from kivy.uix.relativelayout import RelativeLayout
+from kivy.uix.scatterlayout import Scatter
 from kivy.graphics.transformation import Matrix
 import math
 
-# Mit diesem Ansatz funktionierts:
+def angequ(a, b):
+    aa = a % 360.0
+    bb = b % 360.0
+    return aa == bb
 
-class BaseWindow(ScatterLayout):
-    angle = NumericProperty(0.0)
+    # man könnte auch noch die werte in grenzen halten, wenn wir auch
+    # einen errorhandler definieren. Aber es gibt kein hook für die
+    # validierung ... nein: man könnte ev. die routine 'convert' überladen.
+    # (ist hier aber gar nicht erwünscht).
+
+def angerr(a):      # beispiel der errorhandler funktion
+    return a % 360.0
+
+class AngleProperty(NumericProperty):
+    def __init__(self, ** kw):
+        super(AngleProperty,self).__init__(comparator=angequ,**kw)
+
+#class BaseWindow(ScatterLayout):
+class BaseWindow(Scatter):
+    angle = AngleProperty(defautl=0.0)
 
     def __init__(self, wmain, **kw):
         super(BaseWindow, self).__init__(**kw)
@@ -590,25 +631,14 @@ class BaseWindow(ScatterLayout):
         self.do_rotation = False
         self.do_translation = False
 
-        # definition der orientierungen
-        '''
-        self.orientation = {
-            'portrait': 0,
-            'landscape': 90.0,
-            'inverse-portrait': 180,
-            'inverse-landscape': -90.0,
-            }
-        '''
-
-        self.lastm = None
-        self.lasta = None
         self.inside = False
+        self.wmain = wmain
         self.add_widget(wmain)
         self.bind(size=self._update, pos=self._update)
         self.angle = 0.0
 
         # debug
-        #self.angle = 277.0
+        # self.angle = 277.0
 
     def middle(self,pos,size):
         return (pos[0]+size[0]/2.0,pos[1]+size[1]/2.0)
@@ -622,55 +652,51 @@ class BaseWindow(ScatterLayout):
         if self.inside: return
         self.inside = True
 
-        # alte transformation zurücksetzen.
+        # alte transformation zurücksetzen. Basisdimensionen sichern
         self.transform = Matrix()
+        p = self.pos
+        s = self.size
 
-        # neue Transformation anwenden
+        # Grössenänderung in -x/y abh. von der Drehung berechnen.
+        # Kann eine bel. Funktion sein, jedoch müssen die korrekten Werte
+        # bei 0,90,180 und 270 grad durchlaufen werden.
+        def mkvd(ang,val):
+            ang = 2.0*ang
+            ang = (ang-90.0)*math.pi/180.0
+            return val*(math.sin(ang)+1.0)/2.0
+
+        ds = (s[1]-s[0])
+        vds = mkvd(self.angle,ds)
+
+        # Grösse auf das Hauptfenster anwenden.
+        self.wmain.size = (s[0]+vds,s[1]-vds)
+
+        # Transformation der Grösse
+        t = Matrix().translate(p[0]-vds/2.0,p[1]+vds/2.0,0)
+        self.apply_transform(t,anchor=(0.0,0.0))
+
+        # Drehung ums Zentrum
+        a = self.middle(p,s)
         r = Matrix().rotate(self.angle*math.pi/180.0,0,0,1)
-        a = self.middle(self.pos,self.size)
         self.apply_transform(r,anchor=a)
-        self.lastm = r
-        self.lasta = a
-
-        # Content informieren.
-        c = self.children[0]
-        # c ist das 'content' member von scatterlayout, ein Floatlayout
-        # c.children[0] ist unser 'mainwindow'.
 
         print('self.size =',self.size)
-        print('self-pos  =',self.pos)
-        c.children[0].pos = (self.pos[0],self.pos[1])
+        print('self.pos  =',self.pos)
 
-        # size berechnen (vorl. einfache methode, stimmt bei 90,180,270, liefert
-        # aber auch dazwischen etwas)
-        s = self.size
-        angl = self.angle*math.pi/180.0
-        sangl = math.fabs(math.sin(angl))
-        ds = math.fabs(s[0]-s[1]) * sangl
-        if s[0]<s[1]:
-            csize = (s[0]+ds,s[1]-ds)
-        else:
-            csize = (s[0]-ds,s[1]+ds)
+        print('self.wmain.size =',self.wmain.size)
+        print('self.wmain.pos  =',self.wmain.pos)
 
-        print('angle',angl)
-        print('sangle',sangl)
-        print('ds',ds)
-        print('csize',csize)
-        c.size = csize
-
-        # Ist etwas seltsam. Aber nur so funktionert das korrekt:
-        # - Die Ausdehnung muss am 'content' fenster korrigiert werden, hicht
-        #   am mainwindow!
-        # - Die position jedoch direkt am 'mainwindow', sonst gehts auch nicht!
-        # - Die position wurde durch die transformation bereits korrekt berechnet.
-        # - Nicht so die Ausdehnung. Diese wurde nicht angetastet! -> eigener
-        #   Ansatz.
-
-        # unlock:
+        # remove lock
         self.inside = False
 
     def on_angle(self, instance, value):
-        print('on_ongle')
+        print('on_angle')
+        '''
+        if value >= 360.0:
+            self.angle = value - 360.0
+        if value < 0.0:
+            self.angle = value + 360.0
+        '''
         self.mytransform()
 
     def _update(self, instance, value):

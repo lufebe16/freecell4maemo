@@ -637,7 +637,7 @@ class Card(object):
 
         # print (left,top)
 
-        tmpca = CardImg(source=self.pixBuf)
+        tmpca = Cache.getCard(self.pixBuf)
         tmpca.size_hint = cardSizeHint(drawable)
 
         #		tmpca.pos_hint = {'x': left, 'y': top}
@@ -703,7 +703,7 @@ class CardStack(object):
         self.type = stackType
 
         # (folgendes dient nur der bemessung des rects).
-        tmpimg = CardImg(source=emptyStackPixBuf)
+        tmpimg = CardImg(texture=Cache.getCard(emptyStackPixBuf).texture)
         self.cardWidth = tmpimg.get_width()
         self.cardHeight = tmpimg.get_height()
         del tmpimg
@@ -812,7 +812,7 @@ class CardStack(object):
 
     def drawpixBuf(self, drawable, left, top):
 
-        tmpimg = CardImg(source=self.emptyStackPixBuf)
+        tmpimg = CardImg(texture=Cache.getCard(self.emptyStackPixBuf).texture)
         tmpimg.bind(selected=self.printselmsg)
 
         pleft = 1.0 * (left)
@@ -1010,7 +1010,7 @@ class FreeCell(LStreamIOHolder):
                             for i in range(TOTALNUMCARDS)]
 
         # Muster fuer erste einstellungen.
-        tmp = CardImg(source=self.cardPixbufs[0])
+        tmp = Cache.getCard(self.cardPixbufs[0])
         self.cardHeight = tmp.get_height()
         self.cardWidth = tmp.get_width()
 
@@ -1989,6 +1989,24 @@ class sensor_detect(sensor_update):
     def setbase(self,base):
         self.base = base
 
+    def anim(self, angle):
+        '''
+        self.base.angle = angle
+        '''
+        def cmpl(*args):
+            self.animlock = False
+
+        if self.base.angle == 0.0 and angle == 270.0:
+            self.base.angle = 359.0
+        if self.base.angle == 270.0 and angle == 0.0:
+            self.base.angle = -89.0
+
+        anim = Animation(angle=angle, d=1.0, t='in_out_quad')
+        anim.bind(on_complete=cmpl)
+        self.animlock = True
+        anim.start(self.base)
+        ''
+
     def update(self,x,y,z):
         if self.locked: return
         if self.animlock: return
@@ -1996,28 +2014,20 @@ class sensor_detect(sensor_update):
 
         if abs(x) < abs(y):
             if y>0:
-                self.base.angle = 0.0
+                self.anim(0.0)
             else:
-                self.base.angle = 180.0
+                self.anim(180.0)
         else:
             if x<0:
-                self.base.angle = 90.0
-                '''
-                def cmpl(*args):
-                    self.animlock = False
-                anim = Animation(angle=90.0, d=1.0, t='in_out_quad', s=0.2)
-                anim.bind(on_complete=cmpl)
-                self.animlock = True
-                anim.start(self.base)
-                '''
+                self.anim(90.0)
             else:
-                self.base.angle = 270.0
+                self.anim(270.0)
 
     def lock(self):
         if self.reader is None:
             AndroidOri().lockOrientation()
         self.locked = True
-        
+
     def unlock(self):
         if self.reader is None:
             AndroidOri().lockOrientation()
