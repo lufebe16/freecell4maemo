@@ -1997,9 +1997,9 @@ class sensor_detect(sensor_update):
             self.animlock = False
 
         if self.base.angle == 0.0 and angle == 270.0:
-            self.base.angle = 359.0
+            self.base.angle = 359.9
         if self.base.angle == 270.0 and angle == 0.0:
-            self.base.angle = -89.0
+            self.base.angle = -89.9
 
         anim = Animation(angle=angle, d=1.0, t='in_out_quad')
         anim.bind(on_complete=cmpl)

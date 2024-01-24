@@ -518,6 +518,7 @@ class MainWindow(BoxLayout):
         self.full = False
         self.game = game
         self.add_widget(self.game)
+        self.debug = False
 
         with self.canvas.before:
             Color(0, 0.7, 0.1, 1)  # gruen wie ein Spieltisch sollte das sein.
@@ -561,19 +562,38 @@ class MainWindow(BoxLayout):
 
         if touch.is_double_tap:
             print('Touch is a double tap !')
-            print(' - interval is',touch.double_tap_time)
-            print(' - distance between previous is',touch.double_tap_distance)
+            #print(' - interval is',touch.double_tap_time)
+            #print(' - distance between previous is',touch.double_tap_distance)
             self.full = not self.full
             #Clock.schedule_once(self._fs, 0.1)
             return True
 
-        if 1:
-            pass
+        if touch.is_triple_tap:
+            print('Touch is a triple tap !')
+            #print(' - interval is',touch.double_tap_time)
+            #print(' - distance between previous is',touch.double_tap_distance)
+            self.debug = not self.debug
+            if self.debug:
+                text="debug mode enabled"
+            else:
+                text="debug mode disabled"
 
-            print(self.parent)
-            print(self.parent.parent)
-            # self.parent.parent.angle = (self.parent.parent.angle + 15.0) % 360.0
-            self.parent.angle = (self.parent.angle + 15.0) % 360.0
+            from kivy.app import App
+            from toast import Toast
+            da = App.get_running_app().freeCell.drawingArea
+            label = Toast(text=text)
+            label.show(parent=da,duration=3.5,offset=(0.0,0.0))
+            return True
+
+        # debug:
+        if self.debug:
+            self.parent.angle = (self.parent.angle + 5.0) % 360.0
+        if 0:
+            from kivy.animation import Animation
+            def lin(a):
+                return a
+            anim = Animation(angle=self.parent.angle-45.0,t=lin,d=3.0)
+            anim.start(self.parent)
 
         print(ret)
         return ret
@@ -602,26 +622,11 @@ from kivy.uix.scatterlayout import Scatter
 from kivy.graphics.transformation import Matrix
 import math
 
-def angequ(a, b):
-    aa = a % 360.0
-    bb = b % 360.0
-    return aa == bb
-
-    # man könnte auch noch die werte in grenzen halten, wenn wir auch
-    # einen errorhandler definieren. Aber es gibt kein hook für die
-    # validierung ... nein: man könnte ev. die routine 'convert' überladen.
-    # (ist hier aber gar nicht erwünscht).
-
-def angerr(a):      # beispiel der errorhandler funktion
-    return a % 360.0
-
-class AngleProperty(NumericProperty):
-    def __init__(self, ** kw):
-        super(AngleProperty,self).__init__(comparator=angequ,**kw)
-
-#class BaseWindow(ScatterLayout):
 class BaseWindow(Scatter):
-    angle = AngleProperty(defautl=0.0)
+    angle = NumericProperty(0.0)
+    # bringt nichts:
+    # angle = BoundedNumericProperty(
+    #    0.0,comparator=angequ,errorhandler=angerr,min=-90.0,max=450.0)
 
     def __init__(self, wmain, **kw):
         super(BaseWindow, self).__init__(**kw)
@@ -631,7 +636,8 @@ class BaseWindow(Scatter):
         self.do_rotation = False
         self.do_translation = False
 
-        self.inside = False
+        # locals
+        self.relock = False
         self.wmain = wmain
         self.add_widget(wmain)
         self.bind(size=self._update, pos=self._update)
@@ -649,8 +655,10 @@ class BaseWindow(Scatter):
 
     def mytransform(self):
         # wir brauchen einen reetrancy lock sonst himmelfahrt.
-        if self.inside: return
-        self.inside = True
+        if self.relock: return
+        self.relock = True
+
+        print('self.angle =',self.angle)
 
         # alte transformation zurücksetzen. Basisdimensionen sichern
         self.transform = Matrix()
@@ -669,25 +677,60 @@ class BaseWindow(Scatter):
         vds = mkvd(self.angle,ds)
 
         # Grösse auf das Hauptfenster anwenden.
-        self.wmain.size = (s[0]+vds,s[1]-vds)
+        ws = (s[0]+vds,s[1]-vds)
+        self.wmain.size = ws
+        # print('vds =',vds,' ws =',self.wmain.size)
 
-        # Transformation der Grösse
-        t = Matrix().translate(p[0]-vds/2.0,p[1]+vds/2.0,0)
-        self.apply_transform(t,anchor=(0.0,0.0))
+        # Transformation der Grösse und Position ins Zentrum
+        d = (s[0]-ws[0],s[1]-ws[1])
+        t = Matrix().translate(p[0]+(d[0]/2.0),p[1]+(d[1]/2.0),0)
 
         # Drehung ums Zentrum
         a = self.middle(p,s)
+        t1 = Matrix().translate(a[0],a[1],0)
+        t2 = t1.inverse()
         r = Matrix().rotate(self.angle*math.pi/180.0,0,0,1)
-        self.apply_transform(r,anchor=a)
 
-        print('self.size =',self.size)
-        print('self.pos  =',self.pos)
+        # alles zusammenstellen
+        m = Matrix()
+        m = m.multiply(t1)
+        m = m.multiply(r)
+        m = m.multiply(t2)
+        m = m.multiply(t)
 
-        print('self.wmain.size =',self.wmain.size)
-        print('self.wmain.pos  =',self.wmain.pos)
+        # koordinaten inspizieren. also alle ecken ansehen.
+        # und scalierungsmatrix aufsetzen.
+        p0 = m.transform_point(p[0],p[1],0)
+        p1 = m.transform_point(p[0]+ws[0],p[1],0)
+        p2 = m.transform_point(p[0]+ws[0],p[1]+ws[1],0)
+        p3 = m.transform_point(p[0],p[1]+ws[1],0)
+        maxx = max(p0[0],p1[0],p2[0],p3[0])
+        minx = min(p0[0],p1[0],p2[0],p3[0])
+        maxy = max(p0[1],p1[1],p2[1],p3[1])
+        miny = min(p0[1],p1[1],p2[1],p3[1])
+        sx = s[0]/(maxx-minx)
+        sy = s[1]/(maxy-miny)
+        ss = min(sx,sy)
+        # print ('sx,sy,ss=',sx,sy,ss)
+
+        # transformation mit skalierung neu aufsetzen
+        m = Matrix()
+        m = m.multiply(t1)
+        m.scale(ss,ss,1)
+        m = m.multiply(r)
+        m = m.multiply(t2)
+        m = m.multiply(t)
+
+        # anwenden
+        self.apply_transform(m)
+
+        # print('self.size =',self.size)
+        # print('self.pos  =',self.pos)
+        # print('self.wmain.size =',self.wmain.size)
+        # print('self.wmain.pos  =',self.wmain.pos)
 
         # remove lock
-        self.inside = False
+        self.relock = False
 
     def on_angle(self, instance, value):
         print('on_angle')
