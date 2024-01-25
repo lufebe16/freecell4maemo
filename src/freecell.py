@@ -82,7 +82,6 @@ from kivy.clock import Clock
 from kivy.base import stopTouchApp
 from kivy.animation import Animation
 from kivy.uix.actionbar import *
-from kivy.uix.popup import Popup
 from kivy.core.window import Window
 from kivy.utils import platform
 from kivy.properties import ObjectProperty
@@ -1368,18 +1367,15 @@ class FreeCell(LStreamIOHolder):
 
     def about_menu_show(self, widget):
         if (self.aboutBox == None):
-            self.aboutBox = Popup(
-                title='About',
-                content=Label(
-                    text=ABOUT_TEXT,
-                    text_size=(0.9 * self.drawingArea.size[0], None)),
-                size_hint=(0.9, 0.9),
-                auto_dismiss=False)
-            self.aboutBox.bind(on_touch_down=self.about_menu_hide)
-            self.aboutBox.open()
+            def close(): self.aboutBox = None
+            from kivy.app import App
+            from toast import Toast
+            da = App.get_running_app().freeCell.drawingArea
+            label = Toast(text=ABOUT_TEXT)
+            label.popup(parent=da,offset=(0.0,0.0),hook=close)
+            self.aboutBox = label
 
     # Tastatur: nicht angebunden (originalcode).
-
     '''
     def key_press_cb(self, widget, event, *args):
         if (event.keyval == gtk.keysyms.F6):
@@ -1604,6 +1600,9 @@ class FreeCell(LStreamIOHolder):
             cardStack.drawStack(self.drawingArea)
 
         self.drawingArea.refreshStatus()
+
+        if self.aboutBox is not None:
+            self.drawingArea.add_widget(self.aboutBox)
     '''
     def configure_event_resize(self, widget, width, height):
         logging.info("FreeCell: configure_event_resize %s" % widget)
