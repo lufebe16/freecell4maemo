@@ -31,7 +31,7 @@ class Toast(Label):
 	def eval_size(self,instance,size):
 		width, height = size
 		if self.parent is not None:
-			if width > self.parent.width:
+			if 1: # width > self.parent.width:
 				instance.text_size = (self.parent.width, None)
 				instance.texture_update()
 				width, height = instance.texture_size
@@ -40,6 +40,7 @@ class Toast(Label):
 		self.tsize = (width + ads, height + ads)
 
 	def _update_rect(self, instance, value):
+		self.eval_size(instance, value)
 		self.rect.size = self.tsize
 		self.rect.pos = (instance.center_x-self.tsize[0]/2.0,
 						 instance.center_y-self.tsize[1]/2.0)
