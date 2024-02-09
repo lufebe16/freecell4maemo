@@ -2009,7 +2009,7 @@ class sensor_detect(sensor_update):
     def update(self,x,y,z):
         if self.locked: return
         if self.animlock: return
-        if z>8.0: return
+        if abs(z)>7.5: return
 
         if abs(x) < abs(y):
             if y>0:

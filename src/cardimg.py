@@ -572,6 +572,7 @@ class MainWindow(BoxLayout):
             print('Touch is a triple tap !')
             #print(' - interval is',touch.double_tap_time)
             #print(' - distance between previous is',touch.double_tap_distance)
+            '''
             self.debug = not self.debug
             if self.debug:
                 text="debug mode enabled"
@@ -583,6 +584,7 @@ class MainWindow(BoxLayout):
             da = App.get_running_app().freeCell.drawingArea
             label = Toast(text=text)
             label.show(parent=da,duration=3.5,offset=(0.0,0.0))
+            '''
             return True
 
         # debug:
