@@ -2011,16 +2011,29 @@ class sensor_detect(sensor_update):
         if self.animlock: return
         if abs(z)>7.5: return
 
-        if abs(x) < abs(y):
-            if y>0:
-                self.anim(0.0)
+        portrait = False
+        if portrait:
+            if abs(x) < abs(y):
+                if y>0:
+                    self.anim(0.0)
+                else:
+                    self.anim(180.0)
             else:
-                self.anim(180.0)
+                if x<0:
+                    self.anim(90.0)
+                else:
+                    self.anim(270.0)
         else:
-            if x<0:
-                self.anim(90.0)
+            if abs(x) < abs(y):
+                if y>0:
+                    self.anim(90.0)
+                else:
+                    self.anim(270.0)
             else:
-                self.anim(270.0)
+                if x<0:
+                    self.anim(180.0)
+                else:
+                    self.anim(0.0)
 
     def lock(self):
         if self.reader is None:
