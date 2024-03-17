@@ -53,7 +53,7 @@ Freecell4Maemo:
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
            Copyright 2016-2023, Lukas Beck
-Version 2.0
+Version 2.1
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
