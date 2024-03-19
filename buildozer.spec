@@ -55,8 +55,7 @@ presplash.filename = %(source.dir)s/icons/gnome-freecell384.png
 icon.filename = %(source.dir)s/icons/gnome-freecell48.png
 
 # (str) Supported orientation (one of landscape, sensorLandscape, portrait or all)
-# orientation = portrait, landscape
-orientation = landscape
+orientation = portrait, landscape
 
 # (list) List of service to declare
 #services = NAME:ENTRYPOINT_TO_PY,NAME2:ENTRYPOINT2_TO_PY
@@ -79,7 +78,7 @@ osx.kivy_version = 1.9.1
 #
 
 # (bool) Indicate if the application should be fullscreen or not
-fullscreen = 1
+fullscreen = 0
 
 # (string) Presplash background color (for android toolchain)
 # Supported formats are: #RRGGBB #AARRGGBB or one of the following names:
@@ -346,7 +345,7 @@ android.debug_artifact = apk
 # p4a.branch = master
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
-p4a.commit = v2023.09.16
+p4a.commit = v2024.01.21
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 # p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android

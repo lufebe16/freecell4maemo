@@ -98,7 +98,7 @@ import sys
 
 from base import LBase, LStreamIOHolder
 from saf import SaF
-from androidori import AndroidOri
+from androidori import AndroidScreen
 
 # storage dir.
 STORAGESUBDIR = ".freecell4maemo"
@@ -1099,16 +1099,12 @@ class FreeCell(LStreamIOHolder):
         # self.testbutton = ImageButton(source="icons/about.png",fit_mode="contain",bkgnd=(0.25,0.3,0.3,1))
         # self.testbutton.bind(on_press=self.test_toast)
 
-
-        #self.titleLabel = Label(text='FreeCell4')
         self.titleLabel = TitleLabel(bkgnd=(0.25,0.3,0.3,1))
-
 
         self.header = ActionLine()
         self.header.invertOrder = False
         self.header.addButton(self.icon, 1.0)
         #self.header.addButton(self.space, 6.0)
-
         self.header.addButton(self.space, 5.0)
         self.header.addButton(self.titleLabel, 1.0)
 
@@ -1359,11 +1355,11 @@ class FreeCell(LStreamIOHolder):
         self.setCardRects()
         self.redrawOffscreen()
 
-    def about_menu_hide(self, instance, pos):
-        if (self.aboutBox != None):
-            self.aboutBox.dismiss()
-            self.aboutBox = None
-            return False
+    #def about_menu_hide(self, instance, pos):
+    #    if (self.aboutBox != None):
+    #        self.aboutBox.dismiss()
+    #        self.aboutBox = None
+    #        return False
 
     def about_menu_show(self, widget):
         if (self.aboutBox == None):
@@ -1984,14 +1980,18 @@ class sensor_detect(sensor_update):
         self.base = None
         self.locked = False
         self.animlock = False
+        self.ori = 'float'
+        #self.ori = 'portrait'
+        #self.ori = 'landscape'
 
     def setbase(self,base):
         self.base = base
 
     def anim(self, angle):
-        '''
-        self.base.angle = angle
-        '''
+        if self.ori == 'float':
+            # in diesem fall benutzen wir self.direct
+            return
+
         def cmpl(*args):
             self.animlock = False
 
@@ -2004,15 +2004,14 @@ class sensor_detect(sensor_update):
         anim.bind(on_complete=cmpl)
         self.animlock = True
         anim.start(self.base)
-        ''
 
     def update(self,x,y,z):
         if self.locked: return
         if self.animlock: return
-        if abs(z)>7.5: return
+        if abs(z)>8.0: return
 
         portrait = False
-        if portrait:
+        if self.ori == 'portrait':
             if abs(x) < abs(y):
                 if y>0:
                     self.anim(0.0)
@@ -2023,9 +2022,20 @@ class sensor_detect(sensor_update):
                     self.anim(90.0)
                 else:
                     self.anim(270.0)
-        else:
+        if self.ori == 'landscape':
             if abs(x) < abs(y):
                 if y>0:
+                    self.anim(90.0)
+                else:
+                    self.anim(270.0)
+            else:
+                if x<0:
+                    self.anim(180.0)
+                else:
+                    self.anim(0.0)
+        if self.ori == 'float':
+            if abs(x) < abs(y):
+                if y<0:
                     self.anim(90.0)
                 else:
                     self.anim(270.0)
@@ -2036,46 +2046,37 @@ class sensor_detect(sensor_update):
                     self.anim(0.0)
 
     def lock(self):
-        if self.reader is None:
-            AndroidOri().lockOrientation()
+        if self.reader is None or self.ori == 'float':
+            AndroidScreen().lockOrientation()
         self.locked = True
 
     def unlock(self):
-        if self.reader is None:
-            AndroidOri().lockOrientation()
+        if self.reader is None or self.ori == 'float':
+            AndroidScreen().unLockOrientation()
         self.locked = False
 
+    def setOriMode(self,mode):
+        if self.reader is not None:
+            self.ori = mode
+            if mode == 'landscape':
+                AndroidScreen().setLandscapeOrientation()
+            else:
+                AndroidScreen().unLockOrientation()
+
+    def direct(self,a,b):
+        if self.reader is not None and self.ori == 'float':
+            rot = AndroidScreen().getRotation()
+            if rot == 0: self.base.angle = 270
+            elif rot == 1: self.base.angle = 0
+            elif rot == 2: self.base.angle = 90
+            else: self.base.angle = 180
+
 class FreeCellApp(App):
-
-    '''
-    # test MANAGE_EXTERNAL_STORAGE grant:
-    def openSettingsAllFilesAccess(self):
-        if platform == "android":
-            import jnius
-            Intent = jnius.autoclass('android.content.Intent')
-            Uri = jnius.autoclass('android.net.Uri')
-            PythonActivity = jnius.autoclass('org.kivy.android.PythonActivity')
-            currentActivity = jnius.cast('android.app.Activity', PythonActivity.mActivity)
-            Settings = jnius.autoclass('android.provider.Settings')
-
-            # activity: AppCompatActivity) {
-            intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
-            # diese aktion ist nicht bekannt, obwohl in der dockumentation
-            # vorhanden. Auchd die klasse ist richtig: android.provider.Settings.
-            # kommt es auf die target version an? (Erst ab API 31 ?)
-
-            # Solches zeug zu testen wird nun also wirklich überaus
-            # mühselig! - geht womöglich nur auf einem Android 11 gerät.
-            pass
-
-            # aber sowieso: wir wollen den Benutzer gar nicht auffordern das zu
-            # aktivieren. War nur ein Testversuch.
-    '''
 
     def orientation_freeze(self):
         if not self.orientationIsLocked:
             if self.sensor_update is None:
-                AndroidOri().lockOrientation()
+                AndroidScreen().lockOrientation()
             else:
                 self.sensor_update.lock()
             self.orientationIsLocked = True
@@ -2084,22 +2085,29 @@ class FreeCellApp(App):
 
     def orientation_freeze_reset(self):
         if self.sensor_update is None:
-            AndroidOri().unLockOrientation()
+            AndroidScreen().unLockOrientation()
         else:
             self.sensor_update.unlock()
         self.orientationIsLocked = False
         self.freeCell.drawingArea.setLockIcon(False)
 
-    def windowUpdate(self,dt):
+    def windowUpdate(self,dt,a=0):
         logging.info("FreeCellApp: extra window draw")
         if self.freeCell is not None:
+            Window.update_viewport()
             self.freeCell.configure_event_cb(self.freeCell.drawingArea,0)
+
+    def on_oriMode(self, a, b):
+        print('on_oriMode', a, b)
+        self.sensor_update.setOriMode(b)
+        pass
 
     def __init__(self):
         super(FreeCellApp, self).__init__()
         self.freeCell = None
         self.root = None
-        self.sensor_update = sensor_detect(step=0.25)
+        self.sensor_update = sensor_detect(step=0.1)
+        #self.sensor_update = sensor_detect(step=0.25)
         self.orientationIsLocked = False
 
     def on_start(self):
@@ -2108,15 +2116,18 @@ class FreeCellApp(App):
         self.freeCell.streamIO = io
         # ANM: diese Zuweisung triggert 'reload_game'.
 
+        Window.bind(size=self.sensor_update.direct)
+        self.freeCell.mainWindow.bind(oriMode=self.on_oriMode)
+
         # Wenn beim aufstarten gleich fullscreen 'entsteht' wird
         # der Bildschirm nicht gezeichent (schwarz). Zeichnen wir
         # halt nochmals!
-        Clock.schedule_once(self.windowUpdate, 2)
-        Clock.schedule_once(self.windowUpdate, 3)
+        Clock.schedule_once(self.windowUpdate, 0)
+        Clock.schedule_once(self.windowUpdate, 1)
         Clock.schedule_once(self.windowUpdate, 5)
+        Clock.schedule_once(lambda dt: AndroidScreen.fullscreen(True), 2)
 
         self.sensor_update.start_reading()
-        # self.openSettingsAllFilesAccess()
 
     def on_stop(self):
         logging.info("FreeCellApp: on_stop")
@@ -2149,4 +2160,5 @@ class FreeCellApp(App):
         self.root = BaseWindow(self.freeCell.mainWindow)
         # self.root = self.freeCell.mainWindow
         self.sensor_update.setbase(self.root)
+        self.sensor_update.setOriMode(self.freeCell.mainWindow.oriMode)
         return self.root

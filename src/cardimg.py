@@ -220,8 +220,6 @@ class TitleLabel(Widget):
     def __init__(self,bkgnd=(0,0,0,1),**kw):
         super(TitleLabel, self).__init__(**kw)
 
-        text = 'FREECELL4'
-        text = 'FreeCell4'
         text = 'FC4'
         ltext = [c for c in text]
         self.textL = '\n'.join(ltext)
@@ -511,6 +509,9 @@ from kivy.core.window import Window
 from kivy.utils import platform
 
 class MainWindow(BoxLayout):
+    #oriMode = StringProperty('float')
+    oriMode = StringProperty('landscape')
+
     def __init__(self, game):
         super(MainWindow, self).__init__()
         self.orientation = 'vertical'
@@ -572,6 +573,12 @@ class MainWindow(BoxLayout):
             print('Touch is a triple tap !')
             #print(' - interval is',touch.double_tap_time)
             #print(' - distance between previous is',touch.double_tap_distance)
+
+            if self.oriMode == 'float':
+                self.oriMode = 'landscape'
+            else:
+                self.oriMode = 'float'
+
             '''
             self.debug = not self.debug
             if self.debug:
@@ -597,23 +604,11 @@ class MainWindow(BoxLayout):
             anim = Animation(angle=self.parent.angle-45.0,t=lin,d=3.0)
             anim.start(self.parent)
 
-        print(ret)
         return ret
 
     def on_touch_up(self,touch):
         if super(MainWindow, self).on_touch_up(touch):
             return True
-        '''
-        print('Touch up !')
-        for c in self.children:
-            ret = c.on_touch_up(touch)
-
-        if self.collide_point(touch.x,touch.y):
-            print ('on_touch_up Layout')
-            if (touch.time_end-touch.time_start) > 0.5:
-                print ('on_touch_up Layout - long press')
-                return True
-        '''
         return False
 
 # -------------------------------------------------------------------------------
@@ -642,7 +637,8 @@ class BaseWindow(Scatter):
         self.relock = False
         self.wmain = wmain
         self.add_widget(wmain)
-        self.bind(size=self._update, pos=self._update)
+        self.bind(size=self._update)
+        # self.bind(size=pos=self._update)
         self.angle = 0.0
 
         # debug
