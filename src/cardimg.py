@@ -337,6 +337,7 @@ class SettingsPage(BoxLayout):
 class PlayGround(RelativeLayout):
     lastHitPos = ListProperty([])
     longPress = NumericProperty(0)
+    veryLongPress = NumericProperty(0)
 
     def __init__(self):
         super(PlayGround, self).__init__()
@@ -374,6 +375,9 @@ class PlayGround(RelativeLayout):
         if super().on_touch_up(touch):
             return True
         if self.collide_point(touch.x,touch.y):
+            if (touch.time_end-touch.time_start) > 5.0:
+                self.veryLongPress = touch.time_end
+                return True
             if (touch.time_end-touch.time_start) > 0.6:
                 self.longPress = touch.time_end
                 return True
@@ -509,9 +513,6 @@ from kivy.core.window import Window
 from kivy.utils import platform
 
 class MainWindow(BoxLayout):
-    #oriMode = StringProperty('float')
-    oriMode = StringProperty('landscape')
-
     def __init__(self, game):
         super(MainWindow, self).__init__()
         self.orientation = 'vertical'
@@ -573,11 +574,6 @@ class MainWindow(BoxLayout):
             print('Touch is a triple tap !')
             #print(' - interval is',touch.double_tap_time)
             #print(' - distance between previous is',touch.double_tap_distance)
-
-            if self.oriMode == 'float':
-                self.oriMode = 'landscape'
-            else:
-                self.oriMode = 'float'
 
             '''
             self.debug = not self.debug

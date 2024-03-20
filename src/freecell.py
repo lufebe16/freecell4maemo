@@ -937,6 +937,7 @@ class MoveCardTask(Task):
         self.card.cardIsMoving = False
 
 class FreeCell(LStreamIOHolder):
+    oriMode = StringProperty('landscape')
 
     # Handle of android return key
     def key_input(self, window, key, scancode, codepoint, modifier):
@@ -1144,6 +1145,7 @@ class FreeCell(LStreamIOHolder):
         self.drawingArea.bind(lastHitPos=self.drawingAreaClick)
         self.drawingArea.bind(size=self.configure_event_cb)
         self.drawingArea.bind(longPress=self.orientation_freeze)
+        self.drawingArea.bind(veryLongPress=self.toggle_ori_mode)
 
         Window.bind(on_keyboard=self.key_input)
 
@@ -1154,6 +1156,13 @@ class FreeCell(LStreamIOHolder):
 
         self.debugMode = False
         #self.initMoves()
+
+    def toggle_ori_mode(self, *args):
+        print('toggle ori mode')
+        if self.oriMode == 'landscape':
+            self.oriMode = 'float'
+        else:
+            self.oriMode = 'landscape'
 
     def test_toast(self, *args):
         from toast import Toast
@@ -1233,10 +1242,15 @@ class FreeCell(LStreamIOHolder):
             return None
 
     def save_settings(self):
-        pass
+        self.settings.setEntry('orimode',self.oriMode)
 
     def read_settings(self):
-        pass
+        self.settings.load()
+        om = self.settings.getEntry('orimode')
+        if om is None:
+            self.oriMode = 'landscape'
+        else:
+            self.oriMode = om
 
     def save_current_game(self):
         moves = []
@@ -1258,6 +1272,7 @@ class FreeCell(LStreamIOHolder):
         self.store.setEntry('deal',self.startCardOrder)
         self.store.store()
 
+        self.save_settings()
         self.settings.setEntry('saf',False)
         self.settings.store()
 
@@ -2117,7 +2132,7 @@ class FreeCellApp(App):
         # ANM: diese Zuweisung triggert 'reload_game'.
 
         Window.bind(size=self.sensor_update.direct)
-        self.freeCell.mainWindow.bind(oriMode=self.on_oriMode)
+        self.freeCell.bind(oriMode=self.on_oriMode)
 
         # Wenn beim aufstarten gleich fullscreen 'entsteht' wird
         # der Bildschirm nicht gezeichent (schwarz). Zeichnen wir
@@ -2160,5 +2175,5 @@ class FreeCellApp(App):
         self.root = BaseWindow(self.freeCell.mainWindow)
         # self.root = self.freeCell.mainWindow
         self.sensor_update.setbase(self.root)
-        self.sensor_update.setOriMode(self.freeCell.mainWindow.oriMode)
+        self.sensor_update.setOriMode(self.freeCell.oriMode)
         return self.root
