@@ -52,7 +52,7 @@ Freecell4Maemo:
            Copyright 2008, Roy Wood
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
-           Copyright 2016-2023, Lukas Beck
+           Copyright 2016-2024, Lukas Beck
 Version 2.1
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
@@ -937,7 +937,7 @@ class MoveCardTask(Task):
         self.card.cardIsMoving = False
 
 class FreeCell(LStreamIOHolder):
-    oriMode = StringProperty('landscape')
+    oriMode = StringProperty('float')
 
     # Handle of android return key
     def key_input(self, window, key, scancode, codepoint, modifier):
@@ -959,6 +959,8 @@ class FreeCell(LStreamIOHolder):
         print("streamIO: new obj  at",obj)
         self.store.setIO(obj)
         self.reload_game(None)
+        self.settings.setIO(obj)
+        self.read_settings()
         super(FreeCell,self).on_streamIO(instance,obj)
 
     def getStreamIO(self, rootdir = None):
@@ -1248,7 +1250,7 @@ class FreeCell(LStreamIOHolder):
         self.settings.load()
         om = self.settings.getEntry('orimode')
         if om is None:
-            self.oriMode = 'landscape'
+            self.oriMode = 'float'
         else:
             self.oriMode = om
 
@@ -2143,6 +2145,7 @@ class FreeCellApp(App):
         Clock.schedule_once(lambda dt: AndroidScreen.fullscreen(True), 2)
 
         self.sensor_update.start_reading()
+        self.sensor_update.setOriMode(self.freeCell.oriMode)
 
     def on_stop(self):
         logging.info("FreeCellApp: on_stop")
@@ -2175,5 +2178,4 @@ class FreeCellApp(App):
         self.root = BaseWindow(self.freeCell.mainWindow)
         # self.root = self.freeCell.mainWindow
         self.sensor_update.setbase(self.root)
-        self.sensor_update.setOriMode(self.freeCell.oriMode)
         return self.root
