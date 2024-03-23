@@ -3,6 +3,9 @@ Updated libraries/build tools to:
 - p4a 2024.01.21
 - Kivy 2.3.0
 - Python 3.11
+Screen rotation lock:
+- set on first card selection.
+- reset on pause, on long tap to screen and on button exec in menu2
 There are now two modes of screen rotation. To switch between them do a very long tap onto the screen (8s):
 a) Fixed to landscape in android. Window inside app turns according to sensor values.
-b) Sensor directed in android, but the app Window turns to landcape regardless of outer orientation.
+b) Sensor directed in android, but the app Window turns to landcape regardless of outer orientation (default).

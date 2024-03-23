@@ -1146,7 +1146,7 @@ class FreeCell(LStreamIOHolder):
 
         self.drawingArea.bind(lastHitPos=self.drawingAreaClick)
         self.drawingArea.bind(size=self.configure_event_cb)
-        self.drawingArea.bind(longPress=self.orientation_freeze)
+        self.drawingArea.bind(longPress=self.orientation_freeze_reset)
         self.drawingArea.bind(veryLongPress=self.toggle_ori_mode)
 
         Window.bind(on_keyboard=self.key_input)
@@ -1180,6 +1180,10 @@ class FreeCell(LStreamIOHolder):
         app = App.get_running_app()
         app.orientation_freeze()
 
+    def orientation_freeze_reset(self, *args):
+        app = App.get_running_app()
+        app.orientation_freeze_reset()
+
     def menu2_cb(self,widget):
         print ('menu2_cb')
 
@@ -1189,14 +1193,16 @@ class FreeCell(LStreamIOHolder):
 
         def close_cb(a,b):
             self.widgetLine.popAction()
+            app = App.get_running_app()
+            app.orientation_freeze_reset()
 
         # Widget installieren und an callback binden.
         self.widgetLine.pushAction(self.menu2,0.09)
         self.menu2.bind(on_touch_down=close_cb)
 
         # screen rotation lock zurücksetzen.
-        app = App.get_running_app()
-        app.orientation_freeze_reset()
+        # app = App.get_running_app()
+        # app.orientation_freeze_reset()
 
     def initMoves(self):
         # jkq
@@ -1676,6 +1682,8 @@ class FreeCell(LStreamIOHolder):
             self.selectedCardStack = cardStack
             cardVal, suit, colour = cardStack.getCardValueSuitColour(-1)
             logging.debug("cardSelection: top card is: %s",cardnum_to_txt(cardVal+suit*CARDS_PER_SUIT))
+            app = App.get_running_app()
+            app.orientation_freeze()
         else:
             logging.debug("cardSelection: stack is empty")
 
