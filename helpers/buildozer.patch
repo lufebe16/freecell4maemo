@@ -1,0 +1,44 @@
+diff --git a/buildozer/targets/android.py b/buildozer/targets/android.py
+index 6c8031f..89c728e 100644
+--- a/buildozer/targets/android.py
++++ b/buildozer/targets/android.py
+@@ -232,14 +232,7 @@ class TargetAndroid(Target):
+ 
+     @property
+     def apache_ant_dir(self):
+-        directory = expanduser(self.buildozer.config.getdefault(
+-            'app', 'android.ant_path', ''))
+-        if directory:
+-            return realpath(directory)
+-        version = self.buildozer.config.getdefault('app', 'android.ant',
+-                                                   APACHE_ANT_VERSION)
+-        return join(self.buildozer.global_platform_dir,
+-                    'apache-ant-{0}'.format(version))
++        return realpath('/usr')
+ 
+     @property
+     def sdkmanager_path(self):
+@@ -289,14 +282,6 @@ class TargetAndroid(Target):
+             "app", "android.adb_args", "")
+         self.adb_args = shlex.split(adb_args)
+ 
+-        # Need to add internally installed ant to path for external tools
+-        # like adb to use
+-        path = [join(self.apache_ant_dir, 'bin')]
+-        if 'PATH' in self.buildozer.environ:
+-            path.append(self.buildozer.environ['PATH'])
+-        else:
+-            path.append(os.environ['PATH'])
+-        self.buildozer.environ['PATH'] = ':'.join(path)
+         checkbin = self.buildozer.checkbin
+         checkbin('Git (git)', 'git')
+         checkbin('Cython (cython)', 'cython')
+@@ -613,7 +598,7 @@ class TargetAndroid(Target):
+         self._install_apache_ant()
+         self._install_android_sdk()
+         self._install_android_ndk()
+-        self._install_android_packages()
++        pass
+ 
+         # ultimate configuration check.
+         # some of our configuration cannot be check without platform.

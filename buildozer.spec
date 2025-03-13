@@ -429,7 +429,7 @@ ios.codesign.allowed = false
 log_level = 2
 
 # (int) Display warning if buildozer is run as root (0 = False, 1 = True)
-warn_on_root = 1
+warn_on_root = 0
 # export PATH=/home/lb/PRG/Kivy/freecell/bin:$PATH
 # (str) Path to build artifact storage, absolute or relative to spec file
 # build_dir = ./.buildozer

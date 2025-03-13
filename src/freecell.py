@@ -1345,6 +1345,7 @@ class FreeCell(LStreamIOHolder):
         self.setCardRects()
         self.redrawOffscreen()
         self.initMoves()
+        self.cardMoved(0,0)
         logging.info('FreeCell: reload_game (ended)')
 
     def restart_game_menu_cb(self, widget):
@@ -1364,10 +1365,12 @@ class FreeCell(LStreamIOHolder):
         self.setupCards(False)
         self.setCardRects()
         self.redrawOffscreen()
+        self.cardMoved(0,0)
 
     def new_game_menu_cb(self, widget):
         if not (self.taskQ.taskQsAreEmpty()):
             return
+        logging.info('FreeCell: new_game_menu_cb')
         self.undoStack = []
         self.redoStack = []
         self.acesStacks = [
@@ -1381,6 +1384,7 @@ class FreeCell(LStreamIOHolder):
         self.setupCards()
         self.setCardRects()
         self.redrawOffscreen()
+        self.cardMoved(0,0)
 
     #def about_menu_hide(self, instance, pos):
     #    if (self.aboutBox != None):
@@ -1772,7 +1776,8 @@ class FreeCell(LStreamIOHolder):
     #-----------------------------------------------------
 
     def cardMoved(self,instance,value):
-        self.drawingArea.updateDrawCount(abs(len(self.undoStack)-self.taskQ.forwardMoves))
+        # print('cardMoved:',len(self.undoStack),self.taskQ.forwardMoves,value)
+        self.drawingArea.updateDrawCount(abs(len(self.undoStack)-value))
 
     #-----------------------------------------------------
 
