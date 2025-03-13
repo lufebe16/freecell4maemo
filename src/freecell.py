@@ -47,13 +47,15 @@ Some significant points about the main "Freecell" class are:
 # Follows the Kivy Port. GTK removed:
 # (There is also some experimental code left from tests/ideas not activated.)
 
+import version
+
 ABOUT_TEXT = """
 Freecell4Maemo:
            Copyright 2008, Roy Wood
            Copyright 2010, Justin Quek
 Adapted to Android (Kivy):
-           Copyright 2016-2024, Lukas Beck
-Version 2.1
+           Copyright """+version.FREE4_COPYRIGHT+""", Lukas Beck
+Version """+version.FREE4_VERSION+"""
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
 
@@ -862,8 +864,8 @@ class CardStack(object):
 
 
 class MoveCardTask(Task):
-    def __init__(self, name, drawingArea, card, fromX, fromY, toX, toY):
-        super(MoveCardTask, self).__init__(name)
+    def __init__(self, name, drawingArea, card, fromX, fromY, toX, toY, isUndo):
+        super(MoveCardTask, self).__init__(name,isUndo)
         self.drawingArea = drawingArea
         self.card = card
         self.fromX = fromX
@@ -1158,6 +1160,8 @@ class FreeCell(LStreamIOHolder):
 
         self.debugMode = False
         #self.initMoves()
+
+        self.taskQ.bind(forwardMoves=self.cardMoved)
 
     def toggle_ori_mode(self, *args):
         print('toggle ori mode')
@@ -1761,9 +1765,14 @@ class FreeCell(LStreamIOHolder):
         # Visualisierung vorbereiten:
         name = cardnum_to_sym(card.cardNum)
         mt = MoveCardTask(name, self.drawingArea, card, fromX, fromY,
-                          toX, toY)
+                          toX, toY, isUndo)
 
         self.taskQ.taskInsert(mt)
+
+    #-----------------------------------------------------
+
+    def cardMoved(self,instance,value):
+        self.drawingArea.updateDrawCount(abs(len(self.undoStack)-self.taskQ.forwardMoves))
 
     #-----------------------------------------------------
 
@@ -1793,6 +1802,7 @@ class FreeCell(LStreamIOHolder):
 
         dstStack.pushCard(card)
         dstStack.drawTopCard(self.drawingArea)
+        self.cardMoved(0,0)
 
     def clearSelections(self):
         for i in range(len(self.freecellStacks)):
@@ -2070,6 +2080,9 @@ class sensor_detect(sensor_update):
                 else:
                     self.anim(0.0)
 
+    def animLock(self,lock):
+        self.animlock = lock
+
     def lock(self):
         if self.reader is None or self.ori == 'float':
             AndroidScreen().lockOrientation()
@@ -2186,4 +2199,11 @@ class FreeCellApp(App):
         self.root = BaseWindow(self.freeCell.mainWindow)
         # self.root = self.freeCell.mainWindow
         self.sensor_update.setbase(self.root)
+        self.freeCell.taskQ.bind(forwardMoves=self.animLock)
         return self.root
+
+    def animLock(self,instance,value):
+        if value == 0:
+            self.sensor_update.animLock(False)
+        else:
+            self.sensor_update.animLock(True)

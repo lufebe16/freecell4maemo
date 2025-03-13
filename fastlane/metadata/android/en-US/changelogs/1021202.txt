@@ -1,0 +1,8 @@
+Version 2.2
+Updated libraries/build tools to:
+- p4a 2024.01.21
+- Kivy 2.3.0
+- Python 3.11
+- Android API 34
+Display of moves count at bottom of page.
+Screen rotation blocked during animations.

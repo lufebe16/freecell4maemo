@@ -1,6 +1,6 @@
 appdirs==1.4.4
 build==0.10.0
--e git+https://github.com/kivy/buildozer.git@3ebc09e885457db4747e67a1250c2aea1ca7a046#egg=buildozer
+git+https://github.com/kivy/buildozer.git@3ebc09e885457db4747e67a1250c2aea1ca7a046#egg=buildozer
 colorama==0.4.6
 Cython==0.29.32
 Jinja2==3.1.2

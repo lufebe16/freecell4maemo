@@ -352,6 +352,9 @@ class PlayGround(RelativeLayout):
         else:
             self.lock = Image(source="icons/padlock.png",size_hint=(0.12, 0.12),fit_mode="contain")
 
+        self.drawcount = Label(text="0",size_hint=(0.12, 0.12),color=(0.2,0.2,0.2,1),font_size=40)
+        self.statuspanel.add_widget(self.drawcount)
+
     def on_lastHitPos(self, instance, value):
         #print ('lastHitPos',value)
         pass
@@ -398,6 +401,9 @@ class PlayGround(RelativeLayout):
             self.statuspanel.remove_widget(self.lock)
             print ('remove Lock Icon')
         self.refreshStatus()
+
+    def updateDrawCount(self,count=7):
+        self.drawcount.text = str(count)
 
     def on_pos(self, instance, value):
         #print ('pos changed',value)

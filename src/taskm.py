@@ -17,16 +17,19 @@
 
 from kivy._event import EventDispatcher
 from kivy.clock import Clock
-from kivy.properties import BooleanProperty, ListProperty
+from kivy.properties import BooleanProperty, ListProperty, NumericProperty
 
 class Task(EventDispatcher):
     done = BooleanProperty(False)
 
-    def __init__(self, name):
+    def __init__(self, name, isUndo):
         super(Task, self).__init__()
         self.done = False
         self.name = name
         self.delay = 0.01
+        self.direct = 1
+        if isUndo:
+            self.direct = -1
 
     def start(self):
         #print ('start of ',self.name)
@@ -43,6 +46,7 @@ class Task(EventDispatcher):
 class TaskQ(EventDispatcher):
     waitQ = ListProperty([])
     runQ = ListProperty([])
+    forwardMoves = NumericProperty(0)
 
     def __init__(self, **kwargs):
         super(TaskQ, self).__init__(**kwargs)
@@ -90,6 +94,7 @@ class TaskQ(EventDispatcher):
     def taskInsert(self, task):
         print('taskInsert called', task)
         self.waitQ.append(task)
+        self.forwardMoves += task.direct
 
     def taskStopped(self, instance, value):
         if (value is True):
@@ -101,6 +106,7 @@ class TaskQ(EventDispatcher):
 
             if (idx < self.runQlen):
                 print('taskStopped', instance, 'index', idx)
+                self.forwardMoves -= self.runQ[idx].direct
                 del self.runQ[idx]
             else:
                 print('taskStopped: index out of range!')

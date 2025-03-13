@@ -32,7 +32,11 @@ source.exclude_dirs = ARM10, ENV10, __pycache__, android, bin, temp, img, xml
 source.exclude_patterns = mk, mk8, README_BUILDOZER, setkeys, ENV*, ARM*, *.sublime-*
 
 # (str) Application versioning (method 1)
-version = 2.1
+#version = 2.2
+
+# (str) Application versioning (method 2)
+version.regex = FREE4_VERSION = "(.*)"
+version.filename = %(source.dir)s/src/version.py
 
 # (str) Application versioning (method 2)
 # version.regex = __version__ = ['"](.*)['"]
@@ -106,7 +110,7 @@ fullscreen = 0
 
 # (int) Target Android API, should be as high as possible.
 #android.api = 27
-android.api = 32
+android.api = 34
 
 # (int) Minimum API your APK / AAB will support.
 #android.minapi = 21
@@ -471,3 +475,9 @@ warn_on_root = 1
 #    Then, invoke the command line with the "demo" profile:
 #
 #buildozer --profile demo android debug
+
+[app@test]
+# (str) Title of your application
+title = FreeCell4.test
+# (str) Package name
+package.name = freecell.test
