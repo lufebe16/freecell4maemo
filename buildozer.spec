@@ -110,7 +110,7 @@ fullscreen = 0
 
 # (int) Target Android API, should be as high as possible.
 #android.api = 27
-android.api = 34
+android.api = 36
 
 # (int) Minimum API your APK / AAB will support.
 #android.minapi = 21
@@ -119,7 +119,7 @@ android.api = 34
 #android.sdk = 20
 
 # (str) Android NDK version to use
-#android.ndk = 23b
+android.ndk = 25c
 
 # (int) Android NDK API to use. This is the minimum API your app will support, it should usually match android.minapi.
 #android.ndk_api = 21
@@ -346,10 +346,10 @@ android.debug_artifact = apk
 # p4a.fork = kivy
 
 # (str) python-for-android branch to use, defaults to master
-# p4a.branch = master
+p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
-p4a.commit = v2024.01.21
+p4a.commit = c63d8e2a91ce7180811a37eae489f772fb766a9d
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 # p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
