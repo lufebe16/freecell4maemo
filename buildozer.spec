@@ -349,7 +349,7 @@ android.debug_artifact = apk
 p4a.branch = develop
 
 # (str) python-for-android specific commit to use, defaults to HEAD, must be within p4a.branch
-p4a.commit = c63d8e2a91ce7180811a37eae489f772fb766a9d
+p4a.commit = e772ad93f20a61c0bbe1cf8955e073cfb41062e1 
 
 # (str) python-for-android git clone directory (if empty, it will be automatically cloned from github)
 # p4a.source_dir = /home/lb/SourcePackages/python-for-android/python-for-android
